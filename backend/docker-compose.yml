@@ -1,15 +1,20 @@
+version: '3.8'
+
 services:
-  mongodb:
-    image: mongo:7
-    container_name: mongodb
-    ports:
-      - "27017:27017"
+  postgres:
+    image: postgres:16
+    container_name: postgres
     environment:
-      MONGO_INITDB_DATABASE: mydb
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: secret
+      POSTGRES_DB: scheduleDB
+      POSTGRES_USER: cusolOficial
+      POSTGRES_PASSWORD: A4352k#_M
+    ports:
+      - "5432:5432"
     volumes:
-      - mysql-volume:/var/lib/mongodb
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - spring-network
+
 
   spring-api-image:
     image: spring-api-image
@@ -22,10 +27,10 @@ services:
     networks:
       - spring-network
     depends_on:
-      - mongodb
+      - postgres
 
 networks:
   spring-network:
 
 volumes:
-  mysql-volume:
+  postgres-data:
