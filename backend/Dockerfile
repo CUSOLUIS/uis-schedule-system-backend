@@ -13,7 +13,9 @@ WORKDIR /root
 #COPIAR Y PEGAR ARCHIVOS DENTRO DEL CONTENEDOR
 
 COPY ./pom.xml /root
+#Version liviana de maven, contiene configuración del wrapper
 COPY ./.mvn /root/.mvn
+#ejecutable del wrapper
 COPY ./mvnw /root
 #DESCARGAR DEPENDENCIAS
 
@@ -22,9 +24,9 @@ RUN ./mvnw dependency:go-offline
 #COPIAR CODIGO FUENTE EN EL CONTENEDOR
 COPY ./src /root/src
 
-#CONSTRUIR APLICACIÓN
+#CONSTRUIR APLICACIÓN sin test
 
-RUN ./mvnw clean install -DskipTest
+RUN ./mvnw clean install -DskipTests
 
 #LEVANTAR APLICACIÓN CUANDO EL CONTENEDOR INICIE
 
