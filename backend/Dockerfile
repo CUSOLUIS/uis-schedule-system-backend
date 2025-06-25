@@ -26,7 +26,7 @@ COPY ./src /root/src
 
 #CONSTRUIR APLICACIÓN sin test
 
-RUN ./mvnw clean install -DskipTest
+RUN ./mvnw clean install -DskipTests
 
 #LEVANTAR APLICACIÓN CUANDO EL CONTENEDOR INICIE
 
