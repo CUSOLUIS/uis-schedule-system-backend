@@ -2,7 +2,13 @@ package com.uis.schedule.backend.persistence.entity;
 
 
 import jakarta.persistence.*;
+import lombok.*;
 
+@Setter
+@Getter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Table(name = "usuarios")
 public class UsuarioEntity {
@@ -14,7 +20,7 @@ public class UsuarioEntity {
 
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
-    
+
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
