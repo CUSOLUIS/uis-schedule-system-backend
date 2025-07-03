@@ -8,14 +8,11 @@ Backend del sistema de agendamiento de citas para la Universidad Industrial de S
 
 ## 📋 Tabla de Contenidos
 - [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Requisitos](#%EF%B8%8F-requisitos)
-- [Configuración](#-configuración)
-- [Despliegue](#-despliegue)
-- [Endpoints](#-endpoints)
-- [Contribución](#-contribución)
-- [Licencia](#-licencia)
+
 
 ## 📂 Estructura del Proyecto
+
+```text
 uis-schedule-system-backend/
 ├── src/
 │ └── main/
@@ -38,7 +35,7 @@ uis-schedule-system-backend/
 ├── mvnw # Maven Wrapper
 ├── pom.xml # Dependencias Maven
 └── README.md # Documentación
-
+``` 
 ## ✅ Requisitos previos
 
 Antes de comenzar, asegúrate de tener instalado:
