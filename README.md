@@ -3,6 +3,25 @@
 Backend del sistema de agendamiento de la UIS, desarrollado con Spring Boot y ejecutado mediante Docker.
 
 ---
+##📂 Estructura
+
+uis-schedule-system-backend/
+├── src/
+│ └── main/
+│ ├── java/
+│ │ └─ com/uis/schedule/backend/
+│ │  ├── configuration/ # Configuración del proyecto
+│ │  ├── persistence/ # Acceso a datos (entidades, repositorios)
+│ │  ├── presentation/ # Controladores REST
+│ │  ├── service/ # Lógica de negocio
+│ │  ├── util/ # Funciones auxiliares
+│ │  └── UisScheduleSystemBackendApplication.java
+│ └── resources/
+│  └── application.properties
+├── docker-compose.yml
+├── Dockerfile
+└── README.md
+
 
 ## ✅ Requisitos previos
 
@@ -17,12 +36,15 @@ Verifica que están correctamente instalados ejecutando:
 docker -v
 docker compose version
 
-##Clonar Repositorio
+##📥 Clonar Repositorio
 
 git clone https://github.com/usuario/nombre-del-proyecto.git
 cd nombre-del-proyecto
 
 
-##🚀Levantar Backends puerto 8080
+##🚀Levantar Backend puerto 8080
 
 docker compose up --build
+
+
+
