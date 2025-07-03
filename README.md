@@ -4,7 +4,7 @@ Backend del sistema de agendamiento de la UIS, desarrollado con Spring Boot y ej
 
 ---
 ##📂 Estructura
-
+```
 uis-schedule-system-backend/
 ├── src/
 │ └── main/
