@@ -52,7 +52,7 @@ cd nombre-del-proyecto
 
 ## 🚀Levantar Backend puerto 8080
 ```
-docker compose up --build
+docker compose up --build .
 ```
 
 
