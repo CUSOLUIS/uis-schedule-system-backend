@@ -20,4 +20,8 @@ public class ScheduleEntity{
 	@ManyToOne
 	@JoinColumn(name = "class_id")
 	private ClassEntity classId;
+
+	@OneToOne
+	@JoinColumn(name = "user_id")
+	private UserEntity userId;
 }

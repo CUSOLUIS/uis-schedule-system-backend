@@ -36,9 +36,5 @@ public class UserEntity {
 
 	@Column(name = "last_session")
 	private LocalDateTime lastSession;
-
-	@OneToOne
-	@JoinColumn(name = "schedule_id")
-	private ScheduleEntity scheduleId;
 }
 
