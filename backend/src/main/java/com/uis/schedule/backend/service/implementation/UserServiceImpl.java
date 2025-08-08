@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.uis.schedule.backend.service.interfaces.UserService;
+import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.presentation.dto.UserDTO;
 import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.persistence.entity.UserEntity;
@@ -29,7 +30,7 @@ public class UserServiceImpl implements UserService {
 
 	public UserDTO findUserById(Long id){
 		UserEntity userE = userRepository.findById(id)
-			.orElseThrow(() -> new RuntimeException("Not found"));
+			.orElseThrow(() -> new UserNotFoundException(id));
 		UserDTO user = this.toDTO(userE);
 		return user;
 	}
