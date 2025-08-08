@@ -27,7 +27,7 @@ public class UserServiceImpl implements UserService {
 			.collect(Collectors.toList());
 	}
 
-	public UserDTO getUser(Long id){
+	public UserDTO findUserById(Long id){
 		UserEntity userE = userRepository.findById(id)
 			.orElseThrow(() -> new RuntimeException("Not found"));
 		UserDTO user = this.toDTO(userE);

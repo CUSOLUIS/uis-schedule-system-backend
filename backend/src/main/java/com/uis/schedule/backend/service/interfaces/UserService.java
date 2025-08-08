@@ -5,5 +5,5 @@ import com.uis.schedule.backend.presentation.dto.UserDTO;
 
 public interface UserService {
 	List<UserDTO> listUsers();
-	UserDTO getUser(Long id);
+	UserDTO findUserById(Long id);
 }
