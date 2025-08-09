@@ -38,8 +38,8 @@ public class UserServiceImpl implements UserService {
 	private UserDTO toDTO (UserEntity user){
 		UserDTO dto = new UserDTO();
 		dto.setId(user.getUserId());
-		dto.setName(user.getEmail());
-		dto.setEmail(user.getName());
+		dto.setName(user.getName());
+		dto.setEmail(user.getEmail());
 		return dto;
 	}
 }
