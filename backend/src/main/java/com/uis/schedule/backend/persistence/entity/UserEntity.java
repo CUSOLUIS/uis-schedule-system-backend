@@ -32,7 +32,8 @@ public class UserEntity {
 
 	private String permissions;
 
-	private Boolean active;
+	@Column(nullable = false)
+	private boolean active;
 
 	@Column(name = "last_session")
 	private LocalDateTime lastSession;
