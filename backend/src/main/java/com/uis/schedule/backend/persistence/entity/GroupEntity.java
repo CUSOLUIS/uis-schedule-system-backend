@@ -20,7 +20,7 @@ public class GroupEntity{
 	@Column(length = 250, name = "group_name")
 	private String name;
 
-	private Integer capacity;
+	private int capacity;
 
 	@ManyToOne
 	@JoinColumn(name = "teacher_id")

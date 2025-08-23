@@ -27,6 +27,6 @@ public class AcademicPeriodEntity {
 	@Column(name = "end_date")
 	private LocalDate endDate;
 
-	private Boolean active;
+	private boolean active;
 }
 
