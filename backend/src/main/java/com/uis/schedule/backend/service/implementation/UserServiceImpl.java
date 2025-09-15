@@ -2,6 +2,7 @@ package com.uis.schedule.backend.service.implementation;
 
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,10 +30,24 @@ public class UserServiceImpl implements UserService {
 			.collect(Collectors.toList());
 	}
 
-	public UserDTO findUserById(Long id){
-		UserEntity userE = userRepository.findById(id)
-			.orElseThrow(() -> new UserNotFoundException(id));
-		UserDTO user = UserMapper.entityToDTO(userE);
+	public Optional<UserDTO> findUserById(Long id){
+		Optional<UserDTO> user = userRepository.findById(id)
+			.map(UserMapper::entityToDTO);
 		return user;
+	}
+
+	public UserDTO createUser(UserDTO user){
+		UserEntity entity = UserMapper.dtoToEntity(user);
+		UserEntity entitySaved = userRepository.save(entity);
+		return UserMapper.entityToDTO(entitySaved);
+	}
+
+	public UserDTO updateUser(UserDTO user){
+		UserEntity entity = UserMapper.dtoToEntity(user);
+		UserEntity entitySaved = userRepository.save(entity);
+		return UserMapper.entityToDTO(entitySaved);
+	}
+	public void deleteUser(Long id){
+		userRepository.deleteById(id);
 	}
 }
