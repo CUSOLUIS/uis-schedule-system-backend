@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.presentation.dto;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import lombok.*;
 
@@ -15,4 +16,12 @@ public class UserDTO {
 	private String permissions;
 	private boolean active;
 	private LocalDateTime lastSession;
+
+	public String getLastSession(){
+		return lastSession.toString();
+	}
+
+	public void setLastSession(String lastSession){
+		this.lastSession = LocalDateTime.parse(lastSession, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+	}
 }

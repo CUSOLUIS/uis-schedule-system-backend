@@ -4,6 +4,7 @@ package com.uis.schedule.backend.persistence.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Setter
 @Getter
@@ -37,5 +38,12 @@ public class UserEntity {
 
 	@Column(name = "last_session")
 	private LocalDateTime lastSession;
+	public String getLastSession(){
+		return lastSession.toString();
+	}
+
+	public void setLastSession(String lastSession){
+		this.lastSession = LocalDateTime.parse(lastSession, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+	}
 }
 
