@@ -10,14 +10,13 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "users")
+@Table(name = "usuario")
 public class UsuarioEntity {
-
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-
-    private Long id;
+    @Column(name = "id_usuario")
+    private Long idUsuario;
 
     @Column(name = "email", nullable = false, unique = true, length = 100)
     private String email;
@@ -25,17 +24,18 @@ public class UsuarioEntity {
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
-    @Column(name = "enabled")
-    private boolean enabled;
+    @Column(name = "activo")
+    private boolean activo;
 
-    @Column(name = "account_non_expired")
-    private boolean accountNonExpired;
+    @Column(name = "cuenta_no_expirada")
+    private boolean cuentaNoExpirada;
 
-    @Column(name = "account_non_locked")
-    private boolean accountNonLocked;
+    @Column(name = "cuenta_no_bloqueada")
+    private boolean cuentaNoBloqueada;
 
-    @Column(name = "credentials_non_expired")
-    private boolean credentialsNonExpired;
+    @Column(name = "credenciales_no_expiradas")
+    private boolean credencialesNoExpiradas;
+
+
 }
-
 
