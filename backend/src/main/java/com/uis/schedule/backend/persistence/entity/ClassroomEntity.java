@@ -17,10 +17,10 @@ public class ClassroomEntity {
     @Column(name = "classroom_id")
     private Long classroomId;
 
-	private Integer number;
+	private int number;
 
 	@Column(name = "max_capacity")
-	private Integer maxCapacity;
+	private int maxCapacity;
 
 	@Column(length = 256)
 	private String building;
