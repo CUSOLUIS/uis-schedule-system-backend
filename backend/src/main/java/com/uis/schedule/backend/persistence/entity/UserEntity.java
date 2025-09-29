@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
+import java.util.Set;
 
 @Setter
 @Getter
@@ -33,11 +35,26 @@ public class UserEntity {
 
 	private String permissions;
 
-	@Column(nullable = false)
-	private boolean active;
-
 	@Column(name = "last_session")
 	private LocalDateTime lastSession;
+
+	//Security fields
+	@Column(name = "is_enabled")
+	private boolean isEnable;
+
+	@Column(name = "account_no_expired")
+	private boolean accountNoExpired;
+
+	@Column(name = "account_no_locked")
+	private boolean accountNoLocked;
+
+	@Column(name = "credential_no_expired")
+	private boolean credentialNoExpired;
+
+	@ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+	@JoinTable(name="user_roles", joinColumns = @JoinColumn(name="user_id"),inverseJoinColumns = @JoinColumn(name="role_id"))
+	private Set<RoleEntity> roles = new HashSet<>();
+
 	public String getLastSession(){
 		return lastSession.toString();
 	}

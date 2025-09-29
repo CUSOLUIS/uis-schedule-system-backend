@@ -12,7 +12,6 @@ public class UserMapper {
 		dto.setPassword(entity.getPassword());
 		dto.setRole(entity.getRole());
 		dto.setPermissions(entity.getPermissions());
-		dto.setActive(entity.isActive());
 		dto.setLastSession(entity.getLastSession());
 		return dto;
 	}
@@ -25,7 +24,6 @@ public class UserMapper {
 		entity.setPassword(dto.getPassword());
 		entity.setRole(dto.getRole());
 		entity.setPermissions(dto.getPermissions());
-		entity.setActive(dto.isActive());
 		entity.setLastSession(dto.getLastSession());
 		return entity;
 	}

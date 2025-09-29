@@ -1,6 +1,9 @@
 package com.uis.schedule.backend.configuration.security;
 
 
+import com.uis.schedule.backend.configuration.filter.JwtTokenValidator;
+import com.uis.schedule.backend.service.implementation.UserDetailServiceImpl;
+import com.uis.schedule.backend.util.mapper.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,25 +20,29 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@EnableMethodSecurity//me permite trabajar con anotaciones en el security
 public class SecurityConfig {
 
+    @Autowired
+    private JwtUtils jwtUtils;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .csrf(csrf -> csrf.disable())
-                .httpBasic(Customizer.withDefaults())
+                .httpBasic(Customizer.withDefaults()) //se usa solo para usuario y contraseña
                 .sessionManagement(session  -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 //VERSION WITHOUT ANNOTATIONS
 //                .authorizeHttpRequests(http -> {
@@ -43,6 +50,7 @@ public class SecurityConfig {
 //                    http.requestMatchers(HttpMethod.GET, "/auth/hola-secured").hasAnyAuthority("READ");
 //                    http.anyRequest().denyAll();
 //                } )
+                .addFilterBefore(new JwtTokenValidator(jwtUtils), BasicAuthenticationFilter.class)
                 .build();
     }
 
@@ -56,35 +64,17 @@ public class SecurityConfig {
 
     }
     @Bean
-    public AuthenticationProvider authenticationProvider(){
-        DaoAuthenticationProvider provider= new DaoAuthenticationProvider();
+    public AuthenticationProvider authenticationProvider(UserDetailServiceImpl userDetailService){
+        DaoAuthenticationProvider provider= new DaoAuthenticationProvider(); //se conecta a la base de datos y trae los usuarios
         provider.setPasswordEncoder(passwordEncoder());
-        provider.setUserDetailsService(userDetailsService());
+        provider.setUserDetailsService(userDetailService);
         return provider;
     }
 
-    @Bean
-    public UserDetailsService userDetailsService(){
-        List<UserDetails> userDetailsList = new ArrayList<>();
-
-        userDetailsList.add(User.withUsername("richard")
-                .password("1234")
-                .roles("ADMIN")
-                .authorities("READ","CREATE")
-                .build());
-        userDetailsList.add(User.withUsername("Marcos")
-                .password("1234")
-                .roles("USER")
-                .authorities("READ")
-                .build());
-
-
-        return new InMemoryUserDetailsManager(userDetailsList);
-    }
 
     @Bean
     public PasswordEncoder passwordEncoder(){
-        return NoOpPasswordEncoder.getInstance();
+        return new BCryptPasswordEncoder();
     }
 
 

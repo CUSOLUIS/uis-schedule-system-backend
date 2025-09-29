@@ -7,19 +7,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/prueba")
 @PreAuthorize("denyAll()")
 public class Prueba {
 
     @GetMapping("/hola")
-    @PreAuthorize("permitAll()")
+    @PreAuthorize("hasAuthority('VIEW_SCHEDULE') or hasAuthority('APPROVE_PUBLISH_SCHEDULE')")
     public String prueba(){
         return "Hola mundo";
     }
 
 
     @GetMapping("/hola-secured")
-    @PreAuthorize("hasAuthority('READ')")
+    @PreAuthorize("hasAuthority('APPROVE_PUBLISH_SCHEDULE')")
     public String pruebaSecured(){
         return "Hola mundo secured";
     }
