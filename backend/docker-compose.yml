@@ -19,7 +19,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
+    restart: unless-stopped
 
   spring-api-image:
     image: spring-api-image
@@ -31,10 +31,10 @@ services:
       - "8080:8080"
     networks:
       - spring-network
-
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
 
 networks:
   spring-network:
