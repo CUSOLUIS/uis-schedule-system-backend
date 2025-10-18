@@ -1,0 +1,81 @@
+# IDEs
+.idea/
+.vscode/
+*.iml
+.settings/
+.project
+.classpath
+out/
+
+# SonarQube
+.scannerwork
+
+# Maven
+target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Gradle (if used)
+.gradle/
+build/
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Spring Boot
+application-local.properties
+application-dev.properties
+application-test.properties
+
+# Docker (optional, uncomment if needed)
+# docker-compose.override.yml
+# .env
+
+# Database
+*.db
+*.sqlite
+
+# Node.js (if any frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Miscellaneous
+.cache/
+dist/
