@@ -30,6 +30,12 @@
 		<java.version>21</java.version>
 	</properties>
 	<dependencies>
+		<!--Adding springboot dependencies-->
+		<dependency>
+  			<groupId>org.springdoc</groupId>
+  			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+ 			<version>2.6.0</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
