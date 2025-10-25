@@ -21,8 +21,11 @@ public class UisScheduleSystemBackendApplication {
 	}
 
 	@Bean
-	CommandLineRunner init(UserRepository userRepository){
-		return args->{
+	CommandLineRunner init(UserRepository userRepository) {
+		return args -> {
+			// Encoder para encriptar las contraseñas
+			org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder passwordEncoder = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+
 			PermissionEntity createEditSchedulePermission = PermissionEntity.builder()
 					.name("CREATE_EDIT_SCHEDULE")
 					.build();
@@ -43,20 +46,21 @@ public class UisScheduleSystemBackendApplication {
 					.name("EDIT_USERS")
 					.build();
 
-
 			RoleEntity administradorRole = RoleEntity.builder()
 					.roleEnum(RoleEnum.ADMINISTRADOR)
-					.permissionList(Set.of(createEditSchedulePermission,approvePublishSchedulePermission,changeRequestPermission,viewSchedulePermission,editUsersPermission))
+					.permissionList(Set.of(createEditSchedulePermission, approvePublishSchedulePermission,
+							changeRequestPermission, viewSchedulePermission, editUsersPermission))
 					.build();
 
 			RoleEntity operadorRole = RoleEntity.builder()
 					.roleEnum(RoleEnum.OPERADOR)
-					.permissionList(Set.of(approvePublishSchedulePermission,changeRequestPermission,viewSchedulePermission))
+					.permissionList(
+							Set.of(approvePublishSchedulePermission, changeRequestPermission, viewSchedulePermission))
 					.build();
 
 			RoleEntity docenteRole = RoleEntity.builder()
 					.roleEnum(RoleEnum.DOCENTE)
-					.permissionList(Set.of(changeRequestPermission,viewSchedulePermission))
+					.permissionList(Set.of(changeRequestPermission, viewSchedulePermission))
 					.build();
 
 			RoleEntity estudianteRole = RoleEntity.builder()
@@ -66,7 +70,7 @@ public class UisScheduleSystemBackendApplication {
 
 			UserEntity nicoleUser = UserEntity.builder()
 					.email("nicole0202")
-					.password("1234")
+					.password(passwordEncoder.encode("1234"))
 					.isEnable(true)
 					.accountNoExpired(true)
 					.accountNoLocked(true)
@@ -76,7 +80,7 @@ public class UisScheduleSystemBackendApplication {
 
 			UserEntity marcosUser = UserEntity.builder()
 					.email("Marcos123")
-					.password("1234")
+					.password(passwordEncoder.encode("1234"))
 					.isEnable(true)
 					.accountNoExpired(true)
 					.accountNoLocked(true)
@@ -86,7 +90,7 @@ public class UisScheduleSystemBackendApplication {
 
 			UserEntity dayannaUser = UserEntity.builder()
 					.email("Dayanna123")
-					.password("1234")
+					.password(passwordEncoder.encode("1234"))
 					.isEnable(true)
 					.accountNoExpired(true)
 					.accountNoLocked(true)
@@ -96,7 +100,7 @@ public class UisScheduleSystemBackendApplication {
 
 			UserEntity julianUser = UserEntity.builder()
 					.email("Julian123")
-					.password("1234")
+					.password(passwordEncoder.encode("1234"))
 					.isEnable(true)
 					.accountNoExpired(true)
 					.accountNoLocked(true)
@@ -104,7 +108,7 @@ public class UisScheduleSystemBackendApplication {
 					.roles(Set.of(docenteRole))
 					.build();
 
-			userRepository.saveAll(List.of(julianUser,nicoleUser,dayannaUser,marcosUser));
+			userRepository.saveAll(List.of(julianUser, nicoleUser, dayannaUser, marcosUser));
 		};
 	}
 }
