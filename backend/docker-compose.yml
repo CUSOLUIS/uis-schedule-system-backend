@@ -29,6 +29,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    environment:
+      - SPRING_PROFILE=prod
+      - DB_HOST=postgres
     networks:
       - spring-network
     depends_on:
@@ -38,6 +41,7 @@ services:
 
 networks:
   spring-network:
+
 
 volumes:
   postgres-data:
