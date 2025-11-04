@@ -4,10 +4,8 @@ services:
   postgres:
     image: postgres:16
     container_name: postgres
-    environment:
-      POSTGRES_DB: scheduleDB
-      POSTGRES_USER: cusolOficial
-      POSTGRES_PASSWORD: A4352k#_M
+    env_file:
+      - ./.env
     ports:
       - "5432:5432"
     volumes:
@@ -15,7 +13,7 @@ services:
     networks:
       - spring-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U cusolOficial -d scheduleDB" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,11 +25,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    env_file:
+      - ./.env
     ports:
       - "8080:8080"
     environment:
-      - SPRING_PROFILE=prod
+      - SPRING_PROFILE=${SPRING_PROFILE}
       - DB_HOST=postgres
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${POSTGRES_DB}
+      - DB_USERNAME=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - spring-network
     depends_on:
