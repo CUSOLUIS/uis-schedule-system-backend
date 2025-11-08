@@ -21,6 +21,7 @@ import com.uis.schedule.backend.util.mapper.UserMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
+import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
 import com.uis.schedule.backend.presentation.dto.UserDTO;
 import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
@@ -73,40 +74,27 @@ public class UserServiceImpl implements UserService {
 	}
 
     @Override
-    public ResponseEntity<String> signUp(Map<String, String> requestMap) {
-        log.info("Registro interno de un usuario {}.", requestMap);
+    public ResponseEntity<String> signUp(AuthSignupRequest authSignupRequest) {
+        log.info("Registro interno de un usuario {}.", authSignupRequest.email());
         try {
-            if (validateSignUpMap(requestMap)) {
-                UserEntity user = userRepository.findUserEntityByEmail(requestMap.get("email")).orElse(null);
-                if (Objects.isNull(user)) {
-                    userRepository.save(getUserFromMap(requestMap));
-                    return RequestResponseUtils.getResponseEntity("Registro exitoso", HttpStatus.CREATED);
-                } else {
-                    return RequestResponseUtils.getResponseEntity("El correo electrónico ya está registrado", HttpStatus.BAD_REQUEST);
-                }
+            UserEntity user = userRepository.findUserEntityByEmail(authSignupRequest.email()).orElse(null);
+            if (Objects.isNull(user)) {
+                UserEntity newUser = new UserEntity();
+                newUser.setName(authSignupRequest.username());
+                newUser.setEmail(authSignupRequest.email());
+                String encodedPassword = passwordEncoder.encode(authSignupRequest.password());
+                log.info("Encoded password: {}", encodedPassword);
+                newUser.setPassword(encodedPassword);
+                newUser.setRole("user");
+                userRepository.save(newUser);
+                return RequestResponseUtils.getResponseEntity("Registro exitoso", HttpStatus.CREATED);
+            } else {
+                return RequestResponseUtils.getResponseEntity("El correo electrónico ya está registrado", HttpStatus.BAD_REQUEST);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
         return RequestResponseUtils.getResponseEntity("Algo salió mal", HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    private boolean validateSignUpMap(Map<String, String> requestMap) {
-        return requestMap.containsKey("username") &&
-                requestMap.containsKey("email") &&
-                requestMap.containsKey("contactNumber") &&
-                requestMap.containsKey("password");
-    }
-
-    private UserEntity getUserFromMap(Map<String, String> requestMap) {
-        UserEntity user = new UserEntity();
-        user.setName(requestMap.get("username"));
-        user.setEmail(requestMap.get("email"));
-        String encodedPassword = passwordEncoder.encode(requestMap.get("password"));
-        log.info("Encoded password: {}", encodedPassword);
-        user.setPassword(encodedPassword);
-        user.setRole("user");
-        return user;
     }
 
     @Override
