@@ -1,5 +1,6 @@
 package com.uis.schedule.backend.presentation.controller;
 
+import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
 import java.util.Map;
 
 import org.springframework.http.HttpStatus;
@@ -35,9 +36,9 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody(required = true) Map<String, String> requestMap) {
+    public ResponseEntity<String> login(@RequestBody(required = true) AuthLoginRequest authLoginRequest) {
         try {
-            return userService.login(requestMap);
+            return userService.login(authLoginRequest.email(), authLoginRequest.password());
         } catch (Exception e) {
             e.printStackTrace();
         }

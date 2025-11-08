@@ -110,12 +110,11 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public ResponseEntity<String> login(Map<String, String> requesMap) {
-        log.info("Inicio de sesión interno de un usuario {}.");
+    public ResponseEntity<String> login(String email, String password) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            requesMap.get("email"), requesMap.get("password")
+                            email, password
                     )
             );
             if (authentication.isAuthenticated()) {

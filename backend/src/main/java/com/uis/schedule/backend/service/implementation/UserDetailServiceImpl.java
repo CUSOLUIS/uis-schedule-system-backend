@@ -63,14 +63,14 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
     public AuthResponse loginUser(AuthLoginRequest authLoginRequest) {
 
-        String username = authLoginRequest.username();
+        String email = authLoginRequest.email();
         String password = authLoginRequest.password();
 
-        Authentication authentication = this.authenticate(username, password);
+        Authentication authentication = this.authenticate(email, password);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String accessToken = jwtUtils.createToken(authentication);
-        AuthResponse authResponse = new AuthResponse(username, "Usuario Logeado exitosamente", accessToken, true);
+        AuthResponse authResponse = new AuthResponse(email, "Usuario Logeado exitosamente", accessToken, true);
         return authResponse;
     }
 
