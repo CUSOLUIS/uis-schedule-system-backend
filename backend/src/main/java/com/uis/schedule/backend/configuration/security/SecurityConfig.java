@@ -48,16 +48,24 @@ public class SecurityConfig {
 
     @Bean
     protected SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        String[] publicEndpoints = {
+            "/auth/**",
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            "/swagger-resources/**",
+            "/webjars/**"
+        };
+
         httpSecurity
             .cors(cors -> cors.configurationSource(request -> new CorsConfiguration().applyPermitDefaultValues()))
-            .csrf(csrf -> csrf.disable());
-            // .authorizeHttpRequests(auth -> auth
-            //     .requestMatchers("/auth/login", "/auth/signup", "/auth/forgotPassword").permitAll()
-            //     .anyRequest().authenticated()
-            // )
-            // .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            // .authenticationProvider(authenticationProvider())
-            // .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .csrf(csrf -> csrf.disable())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(publicEndpoints).permitAll()
+                .anyRequest().authenticated()
+            )
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authenticationProvider(authenticationProvider())
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return httpSecurity.build();
     }
 }

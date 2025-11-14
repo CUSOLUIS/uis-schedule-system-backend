@@ -25,7 +25,7 @@ public class CustomerDetailService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) {
         // Using email as username for authentication
         log.info("Loading user by email: {}", username);
-        UserEntity userDetail = userRepository.findUserEntityByEmail(username).orElse(null);
+        UserEntity userDetail = userRepository.findUserEntityByEmailOrName(username, username).orElse(null);
         if(!Objects.isNull(userDetail)) {
             return new org.springframework.security.core.userdetails.User(
                 userDetail.getEmail(),

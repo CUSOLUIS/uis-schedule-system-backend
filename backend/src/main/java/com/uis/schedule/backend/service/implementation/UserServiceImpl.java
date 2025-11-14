@@ -77,7 +77,7 @@ public class UserServiceImpl implements UserService {
     public ResponseEntity<String> signUp(AuthSignupRequest authSignupRequest) {
         log.info("Registro interno de un usuario {}.", authSignupRequest.email());
         try {
-            UserEntity user = userRepository.findUserEntityByEmail(authSignupRequest.email()).orElse(null);
+            UserEntity user = userRepository.findUserEntityByEmailOrName(authSignupRequest.email(), authSignupRequest.username()).orElse(null);
             if (Objects.isNull(user)) {
                 UserEntity newUser = new UserEntity();
                 newUser.setName(authSignupRequest.username());
@@ -107,7 +107,7 @@ public class UserServiceImpl implements UserService {
             );
             if (authentication.isAuthenticated()) {
                 String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal()).getUsername();
-                UserEntity user = userRepository.findUserEntityByEmail(username).orElse(null);
+                UserEntity user = userRepository.findUserEntityByEmailOrName(username, username).orElse(null);
 
                 if (user.isEnable()) {
                     return new ResponseEntity<String>(
