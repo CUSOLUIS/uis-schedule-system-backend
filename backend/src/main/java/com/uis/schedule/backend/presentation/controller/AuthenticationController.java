@@ -39,7 +39,7 @@ public class AuthenticationController {
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody(required = true) AuthLoginRequest authLoginRequest) {
         try {
-            return userService.login(authLoginRequest.email(), authLoginRequest.password());
+            return userService.login(authLoginRequest.usernameOrEmail(), authLoginRequest.password());
         } catch (Exception e) {
             e.printStackTrace();
         }

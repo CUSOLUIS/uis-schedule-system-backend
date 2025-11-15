@@ -63,7 +63,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
     public AuthResponse loginUser(AuthLoginRequest authLoginRequest) {
 
-        String email = authLoginRequest.email();
+        String email = authLoginRequest.usernameOrEmail();
         String password = authLoginRequest.password();
 
         Authentication authentication = this.authenticate(email, password);

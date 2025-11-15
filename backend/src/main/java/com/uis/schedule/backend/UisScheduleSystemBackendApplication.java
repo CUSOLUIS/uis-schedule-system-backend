@@ -69,7 +69,8 @@ public class UisScheduleSystemBackendApplication {
 					.build();
 
 			UserEntity nicoleUser = UserEntity.builder()
-					.email("nicole0202")
+					.name("nicole0202")
+					.email("nicole0202@uis.edu.co")
 					.password(passwordEncoder.encode("1234"))
 					.isEnable(true)
 					.accountNoExpired(true)
@@ -79,7 +80,8 @@ public class UisScheduleSystemBackendApplication {
 					.build();
 
 			UserEntity marcosUser = UserEntity.builder()
-					.email("Marcos123")
+					.name("Marcos123")
+					.email("Marcos123@uis.edu.co")
 					.password(passwordEncoder.encode("1234"))
 					.isEnable(true)
 					.accountNoExpired(true)
@@ -89,7 +91,8 @@ public class UisScheduleSystemBackendApplication {
 					.build();
 
 			UserEntity dayannaUser = UserEntity.builder()
-					.email("Dayanna123")
+					.name("Dayanna123")
+					.email("Dayanna123@uis.edu.co")
 					.password(passwordEncoder.encode("1234"))
 					.isEnable(true)
 					.accountNoExpired(true)
@@ -99,7 +102,8 @@ public class UisScheduleSystemBackendApplication {
 					.build();
 
 			UserEntity julianUser = UserEntity.builder()
-					.email("Julian123")
+					.name("Julian123")
+					.email("Julian123@uis.edu.co")
 					.password(passwordEncoder.encode("1234"))
 					.isEnable(true)
 					.accountNoExpired(true)
