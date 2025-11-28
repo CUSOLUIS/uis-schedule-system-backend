@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 
 @Service
 public class JwtUtil {
@@ -31,11 +32,17 @@ public class JwtUtil {
     }
 
     Claims extractAllClaims (String token) {
-        return Jwts.parserBuilder().setSigningKey(secret.getBytes()).build().parseClaimsJws(token).getBody();
+        return Jwts.parser().setSigningKey(secret.getBytes()).parseClaimsJws(token).getBody();
     }
 
-    private Boolean isTokenExpired (String token) {
+    // Método público para verificar si el token ha expirado
+    public Boolean isTokenExpired (String token) {
         return extractExpiration(token).before(new Date(System.currentTimeMillis()));
+    }
+
+    // Método sobrecargado para solo username (compatibilidad con Angular)
+    public String generateToken (String username) {
+        return generateToken(username, "USER");
     }
 
     public String generateToken (String username, String role) {
@@ -45,13 +52,13 @@ public class JwtUtil {
     }
 
     private String createToken (Map<String, Object> claims, String subject) {
-        long expirationTime = 1000 * 60 * 60 * 10; // 10 hours
+        long expirationTime = 1000 * 60 * 60 * 24; // 24 hours para Angular
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(new java.util.Date(System.currentTimeMillis()))
                 .setExpiration(new java.util.Date(System.currentTimeMillis() + expirationTime))
-                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(secret.getBytes()))
+                .signWith(io.jsonwebtoken.SignatureAlgorithm.HS512, secret.getBytes())
                 .compact();
     }
 

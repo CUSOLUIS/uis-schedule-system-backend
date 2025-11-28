@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Entity
-@Table(name = "audit_log")
+// @Entity  // Comentada temporalmente para evitar conflictos de schema
+// @Table(name = "audit_log")  // Descomentaremos cuando resolvamos el problema de base de datos
 public class AuditLogEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,7 +27,7 @@ public class AuditLogEntity {
 	@Column(length = 256, name = "origin_ip")
 	private String originIp;
 
-	@Column(name = "start_date")
+	@Column(name = "start_timestamp")
 	private LocalDateTime date;
 
 	@OneToOne
