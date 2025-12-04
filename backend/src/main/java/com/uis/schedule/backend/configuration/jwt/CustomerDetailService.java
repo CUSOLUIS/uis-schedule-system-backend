@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.configuration.jwt;
 
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,12 +27,27 @@ public class CustomerDetailService implements UserDetailsService {
         // Using email as username for authentication
         log.info("Loading user by email: {}", username);
         UserEntity userDetail = userRepository.findUserEntityByEmail(username).orElse(null);
-        if(!Objects.isNull(userDetail)) {
+        if (!Objects.isNull(userDetail)) {
+            List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
+
+            // Tomamos los roles y los convertimos en un obj que entienda spring security
+            userDetail.getRoles()
+                    .forEach(role -> authorityList
+                            .add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name()))));
+
+            // Tomamos los permisos y los convertimos en un obj que entienda spring security
+            userDetail.getRoles().stream()
+                    .flatMap(role -> role.getPermissionList().stream())
+                    .forEach(permission -> authorityList.add(new SimpleGrantedAuthority(permission.getName())));
+
             return new org.springframework.security.core.userdetails.User(
-                userDetail.getEmail(),
-                userDetail.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority(userDetail.getRole()))
-            );
+                    userDetail.getEmail(),
+                    userDetail.getPassword(),
+                    userDetail.isEnable(),
+                    userDetail.isAccountNoExpired(),
+                    userDetail.isCredentialNoExpired(),
+                    userDetail.isAccountNoLocked(),
+                    authorityList);
         } else {
             throw new UsernameNotFoundException("User not found with email: " + username);
         }

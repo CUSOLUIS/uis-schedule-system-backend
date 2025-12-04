@@ -35,7 +35,7 @@ public class JwtTokenValidator extends OncePerRequestFilter {
 
         // Excluir rutas públicas del filtro JWT
         String requestPath = request.getRequestURI();
-        if (requestPath.equals("/auth/log-in") ||
+        if (requestPath.equals("/auth/login") ||
                 requestPath.startsWith("/v3/api-docs") ||
                 requestPath.startsWith("/swagger-ui")) {
             filterChain.doFilter(request, response);

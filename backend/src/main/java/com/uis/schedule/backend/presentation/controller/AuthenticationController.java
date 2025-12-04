@@ -11,8 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.uis.schedule.backend.service.interfaces.UserService;
+import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
 import com.uis.schedule.backend.util.RequestResponseUtils;
 
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
@@ -35,9 +37,9 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody(required = true) Map<String, String> requestMap) {
+    public ResponseEntity<String> login(@Valid @RequestBody AuthLoginRequest request) {
         try {
-            return userService.login(requestMap);
+            return userService.login(request);
         } catch (Exception e) {
             e.printStackTrace();
         }

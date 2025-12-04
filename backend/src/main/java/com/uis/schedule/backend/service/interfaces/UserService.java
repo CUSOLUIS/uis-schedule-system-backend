@@ -6,15 +6,20 @@ import com.uis.schedule.backend.presentation.dto.UserDTO;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Map;
+import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
 
 public interface UserService {
 	List<UserDTO> listUsers();
+
 	Optional<UserDTO> findUserById(Long id);
+
 	UserDTO createUser(UserDTO user);
+
 	UserDTO updateUser(UserDTO user);
+
 	void deleteUser(Long id);
 
 	ResponseEntity<String> signUp(Map<String, String> requestMap);
 
-	ResponseEntity<String> login(Map<String, String> requestMap);
+	ResponseEntity<String> login(AuthLoginRequest requestMap);
 }
