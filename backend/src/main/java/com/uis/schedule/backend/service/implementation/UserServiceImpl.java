@@ -16,8 +16,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.uis.schedule.backend.service.interfaces.UserService;
-import com.uis.schedule.backend.util.RequestResponseUtils;
+import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
 import com.uis.schedule.backend.util.mapper.UserMapper;
+import com.uis.schedule.backend.util.RequestResponseUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,8 +31,8 @@ import com.uis.schedule.backend.persistence.entity.UserEntity;
 @Slf4j
 @Service
 public class UserServiceImpl implements UserService {
-	@Autowired
-	private UserRepository userRepository;
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -42,36 +43,37 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-	public UserServiceImpl(UserRepository userRepository) {
-		this.userRepository = userRepository;
-	}
+    public UserServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
-	public List<UserDTO> listUsers(){
-		return userRepository.findAll().stream()
-			.map(UserMapper::entityToDTO)
-			.collect(Collectors.toList());
-	}
+    public List<UserDTO> listUsers() {
+        return userRepository.findAll().stream()
+                .map(UserMapper::entityToDTO)
+                .collect(Collectors.toList());
+    }
 
-	public Optional<UserDTO> findUserById(Long id){
-		Optional<UserDTO> user = userRepository.findById(id)
-			.map(UserMapper::entityToDTO);
-		return user;
-	}
+    public Optional<UserDTO> findUserById(Long id) {
+        Optional<UserDTO> user = userRepository.findById(id)
+                .map(UserMapper::entityToDTO);
+        return user;
+    }
 
-	public UserDTO createUser(UserDTO user){
-		UserEntity entity = UserMapper.dtoToEntity(user);
-		UserEntity entitySaved = userRepository.save(entity);
-		return UserMapper.entityToDTO(entitySaved);
-	}
+    public UserDTO createUser(UserDTO user) {
+        UserEntity entity = UserMapper.dtoToEntity(user);
+        UserEntity entitySaved = userRepository.save(entity);
+        return UserMapper.entityToDTO(entitySaved);
+    }
 
-	public UserDTO updateUser(UserDTO user){
-		UserEntity entity = UserMapper.dtoToEntity(user);
-		UserEntity entitySaved = userRepository.save(entity);
-		return UserMapper.entityToDTO(entitySaved);
-	}
-	public void deleteUser(Long id){
-		userRepository.deleteById(id);
-	}
+    public UserDTO updateUser(UserDTO user) {
+        UserEntity entity = UserMapper.dtoToEntity(user);
+        UserEntity entitySaved = userRepository.save(entity);
+        return UserMapper.entityToDTO(entitySaved);
+    }
+
+    public void deleteUser(Long id) {
+        userRepository.deleteById(id);
+    }
 
     @Override
     public ResponseEntity<String> signUp(AuthSignupRequest authSignupRequest) {
@@ -109,17 +111,11 @@ public class UserServiceImpl implements UserService {
                 String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal()).getUsername();
                 UserEntity user = userRepository.findUserEntityByEmailOrName(username, username).orElse(null);
 
-                if (user.isEnable()) {
-                    return new ResponseEntity<String>(
+                return new ResponseEntity<String>(
                         "{\"token\":\"" + jwtUtil.generateToken(
-                            user.getEmail(),
-                            user.getRole()
-                        ) + "\"}",
-                        HttpStatus.OK
-                    );
-                } else {
-                    return new ResponseEntity<String>("{\"mensaje\":\"Usuario no aprobado por el administrador\"}", HttpStatus.BAD_REQUEST);
-                }
+                                user.getEmail(),
+                                user.getRoles().iterator().next().getRoleEnum().name()) + "\"}",
+                        HttpStatus.OK);
             }
         } catch (Exception e) {
             log.error("{}", e);

@@ -7,12 +7,17 @@ import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Map;
+import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
 
 public interface UserService {
 	List<UserDTO> listUsers();
+
 	Optional<UserDTO> findUserById(Long id);
+
 	UserDTO createUser(UserDTO user);
+
 	UserDTO updateUser(UserDTO user);
+
 	void deleteUser(Long id);
 
 	ResponseEntity<String> signUp(AuthSignupRequest authSignupRequest);
