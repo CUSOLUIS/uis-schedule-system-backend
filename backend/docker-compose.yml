@@ -10,6 +10,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./logs/postgres:/var/log/postgresql
+    command: ["postgres", "-c", "logging_collector=on", "-c", "log_directory=/var/log/postgresql", "-c", "log_filename=postgresql-%a.log"]
     networks:
       - spring-network
     healthcheck:
@@ -29,9 +31,12 @@ services:
       - ./.env
     ports:
       - "8080:8080"
+    volumes:
+      - ./logs/spring-api:/var/log/spring
     environment:
       - SPRING_PROFILE=${SPRING_PROFILE}
       - DB_HOST=postgres
+      - LOGGING_FILE_PATH=/var/log/spring
       - DB_PORT=${DB_PORT}
       - DB_NAME=${POSTGRES_DB}
       - DB_USERNAME=${POSTGRES_USER}
