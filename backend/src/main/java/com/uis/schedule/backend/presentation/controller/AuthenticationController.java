@@ -4,6 +4,9 @@ import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
 import com.uis.schedule.backend.presentation.dto.AuthResponse;
 import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +32,12 @@ public class AuthenticationController {
         this.userService = userService;
     }
 
+    @Operation(summary = "Register a new user", description = "Creates a new user in the system and returns a JWT token upon successful registration.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User registered successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input or user with the same email already exists"),
+            @ApiResponse(responseCode = "500", description = "Internal server error during registration")
+    })
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> signUp(@RequestBody(required = true) AuthSignupRequest authSignupRequest) {
         try {
@@ -40,6 +49,12 @@ public class AuthenticationController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
     }
 
+    @Operation(summary = "Authenticate a user", description = "Logs in a user with email/username and password, and returns a JWT token.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login successful"),
+            @ApiResponse(responseCode = "400", description = "Bad credentials"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody(required = true) AuthLoginRequest authLoginRequest) {
         try {

@@ -1,16 +1,17 @@
 package com.uis.schedule.backend.configuration;
 
-import io.swagger.v3.oas.annotations.OpenAPIDefinition;
-import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@OpenAPIDefinition(
-  info = @Info(
-    title = "UIS Schedule API",
-    version = "v1",
-    description = "API del sistema de agendamiento"
-  )
+@SecurityScheme(
+    name = "bearerAuth",
+    type = SecuritySchemeType.HTTP,
+    scheme = "bearer",
+    bearerFormat = "JWT"
 )
-public class OpenApiConfig {}
+public class OpenApiConfig {
+    
+}
 
