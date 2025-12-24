@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import com.uis.schedule.backend.service.interfaces.UserService;
@@ -28,6 +29,7 @@ import com.uis.schedule.backend.presentation.dto.UserDTO;
 import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
 import com.uis.schedule.backend.persistence.entity.UserEntity;
+import com.uis.schedule.backend.service.exception.UserNotFoundException;
 
 @Slf4j
 @Service
@@ -60,16 +62,35 @@ public class UserServiceImpl implements UserService {
         return user;
     }
 
+    @Override
     public UserDTO createUser(UserDTO user) {
         UserEntity entity = UserMapper.dtoToEntity(user);
-        UserEntity entitySaved = userRepository.save(entity);
-        return UserMapper.entityToDTO(entitySaved);
+        try {
+            UserEntity entitySaved = userRepository.save(entity);
+            return UserMapper.entityToDTO(entitySaved);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("User creation failed: The email '" + user.getEmail() + "' may already be in use.");
+        }
     }
 
-    public UserDTO updateUser(UserDTO user) {
-        UserEntity entity = UserMapper.dtoToEntity(user);
-        UserEntity entitySaved = userRepository.save(entity);
-        return UserMapper.entityToDTO(entitySaved);
+    @Override
+    public UserDTO updateUser(Long id, UserDTO user) {
+        UserEntity userToUpdate = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
+
+        // Update fields from DTO
+        userToUpdate.setName(user.getName());
+        userToUpdate.setEmail(user.getEmail());
+        // Note: Password and roles are not updated here for security reasons.
+        // They should have their own dedicated methods if needed.
+
+        try {
+            UserEntity updatedUser = userRepository.save(userToUpdate);
+            return UserMapper.entityToDTO(updatedUser);
+        } catch (DataIntegrityViolationException e) {
+            // This is likely due to the email already existing for another user.
+            throw new IllegalArgumentException("Email '" + user.getEmail() + "' is already in use by another user.");
+        }
     }
 
     public void deleteUser(Long id) {
@@ -110,7 +131,8 @@ public class UserServiceImpl implements UserService {
             );
             if (authentication.isAuthenticated()) {
                 String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal()).getUsername();
-                UserEntity user = userRepository.findUserEntityByEmailOrName(username, username).orElse(null);
+                UserEntity user = userRepository.findUserEntityByEmailOrName(username, username)
+                        .orElseThrow(() -> new UserNotFoundException("Authenticated user not found in database: " + username));
 
                 String token = jwtUtil.generateToken(
                         user.getUserId(),

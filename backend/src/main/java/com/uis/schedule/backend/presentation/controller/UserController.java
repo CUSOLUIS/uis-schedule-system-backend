@@ -46,9 +46,14 @@ public class UserController {
 		return new ResponseEntity<>(userService.createUser(user),HttpStatus.OK);
 	}
 
-	@PutMapping
-	public ResponseEntity<UserDTO> updateUser(@RequestBody UserDTO user){
-		return ResponseEntity.ok(userService.updateUser(user));
+	@PutMapping("/{id}")
+	public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody UserDTO user){
+		try {
+            UserDTO updatedUser = userService.updateUser(id, user);
+            return ResponseEntity.ok(updatedUser);
+        } catch (UserNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
 	}
 
 	@DeleteMapping("/{id}")
