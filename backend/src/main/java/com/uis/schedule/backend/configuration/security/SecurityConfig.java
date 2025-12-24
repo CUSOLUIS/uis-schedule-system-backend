@@ -57,17 +57,17 @@ public class SecurityConfig {
         };
 
         httpSecurity
-                .cors(cors -> cors.configurationSource(request -> new CorsConfiguration().applyPermitDefaultValues()));
-                // .csrf(csrf -> csrf.disable())
-                // .authorizeHttpRequests(auth -> auth
-                //         .requestMatchers(publicEndpoints)
-                //         .permitAll()
-                //         .anyRequest()
-                //         .authenticated()
-                // );
-                // .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // .authenticationProvider(authenticationProvider())
-                // .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> cors.configurationSource(request -> new CorsConfiguration().applyPermitDefaultValues()))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(publicEndpoints)
+                        .permitAll()
+                        .anyRequest()
+                        .authenticated()
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return httpSecurity.build();
     }
 }

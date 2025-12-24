@@ -1,8 +1,9 @@
 package com.uis.schedule.backend.presentation.controller;
 
 import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
+import com.uis.schedule.backend.presentation.dto.AuthResponse;
 import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
-import java.util.Map;
+
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,22 +30,24 @@ public class AuthenticationController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<String> signUp(@RequestBody(required = true) AuthSignupRequest authSignupRequest) {
+    public ResponseEntity<AuthResponse> signUp(@RequestBody(required = true) AuthSignupRequest authSignupRequest) {
         try {
-            return userService.signUp(authSignupRequest);
+            AuthResponse authResponse = userService.signUp(authSignupRequest);
+            return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return RequestResponseUtils.getResponseEntity("Algo salió mal", HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody(required = true) AuthLoginRequest authLoginRequest) {
+    public ResponseEntity<AuthResponse> login(@RequestBody(required = true) AuthLoginRequest authLoginRequest) {
         try {
-            return userService.login(authLoginRequest.usernameOrEmail(), authLoginRequest.password());
+            AuthResponse authResponse = userService.login(authLoginRequest.usernameOrEmail(), authLoginRequest.password());
+            return ResponseEntity.ok(authResponse);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return RequestResponseUtils.getResponseEntity("Algo salió mal", HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
     }
 }

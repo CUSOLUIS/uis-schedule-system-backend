@@ -1,7 +1,7 @@
 package com.uis.schedule.backend.service.implementation;
 
 import java.util.List;
-import java.util.Map;
+
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -17,8 +17,9 @@ import org.springframework.stereotype.Service;
 
 import com.uis.schedule.backend.service.interfaces.UserService;
 import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
+import com.uis.schedule.backend.presentation.dto.AuthResponse;
 import com.uis.schedule.backend.util.mapper.UserMapper;
-import com.uis.schedule.backend.util.RequestResponseUtils;
+
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -76,7 +77,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public ResponseEntity<String> signUp(AuthSignupRequest authSignupRequest) {
+    public AuthResponse signUp(AuthSignupRequest authSignupRequest) {
         log.info("Registro interno de un usuario {}.", authSignupRequest.email());
         try {
             UserEntity user = userRepository.findUserEntityByEmailOrName(authSignupRequest.email(), authSignupRequest.username()).orElse(null);
@@ -89,18 +90,18 @@ public class UserServiceImpl implements UserService {
                 newUser.setPassword(encodedPassword);
                 newUser.setRole("user");
                 userRepository.save(newUser);
-                return RequestResponseUtils.getResponseEntity("Registro exitoso", HttpStatus.CREATED);
+                return new AuthResponse(authSignupRequest.username(), "User registered successfully", null, true);
             } else {
-                return RequestResponseUtils.getResponseEntity("El correo electrónico ya está registrado", HttpStatus.BAD_REQUEST);
+                return new AuthResponse(authSignupRequest.username(), "Email already registered", null, false);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        return RequestResponseUtils.getResponseEntity("Algo salió mal", HttpStatus.INTERNAL_SERVER_ERROR);
+        return new AuthResponse(null, "Something went wrong", null, false);
     }
 
     @Override
-    public ResponseEntity<String> login(String email, String password) {
+    public AuthResponse login(String email, String password) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
@@ -111,15 +112,16 @@ public class UserServiceImpl implements UserService {
                 String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal()).getUsername();
                 UserEntity user = userRepository.findUserEntityByEmailOrName(username, username).orElse(null);
 
-                return new ResponseEntity<String>(
-                        "{\"token\":\"" + jwtUtil.generateToken(
-                                user.getEmail(),
-                                user.getRoles().iterator().next().getRoleEnum().name()) + "\"}",
-                        HttpStatus.OK);
+                String token = jwtUtil.generateToken(
+                        user.getUserId(),
+                        user.getEmail(),
+                        user.getRoles().iterator().next().getRoleEnum().name());
+                
+                return new AuthResponse(user.getName(), "Login successful", token, true);
             }
         } catch (Exception e) {
             log.error("{}", e);
         }
-        return new ResponseEntity<String>("{\"mensaje\":\"Credenciales incorrectas\"}", HttpStatus.BAD_REQUEST);
+        return new AuthResponse(null, "Bad credentials", null, false);
     }
 }

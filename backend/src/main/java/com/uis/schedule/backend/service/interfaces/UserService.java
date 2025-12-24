@@ -4,10 +4,9 @@ import java.util.List;
 import java.util.Optional;
 import com.uis.schedule.backend.presentation.dto.UserDTO;
 import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
-import org.springframework.http.ResponseEntity;
 
-import java.util.Map;
 import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
+import com.uis.schedule.backend.presentation.dto.AuthResponse;
 
 public interface UserService {
 	List<UserDTO> listUsers();
@@ -20,7 +19,7 @@ public interface UserService {
 
 	void deleteUser(Long id);
 
-	ResponseEntity<String> signUp(AuthSignupRequest authSignupRequest);
+		AuthResponse signUp(AuthSignupRequest authSignupRequest);
 
-	ResponseEntity<String> login(String email, String password);
+		AuthResponse login(String email, String password);
 }
