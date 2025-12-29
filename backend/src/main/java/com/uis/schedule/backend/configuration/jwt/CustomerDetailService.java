@@ -38,9 +38,8 @@ public class CustomerDetailService implements UserDetailsService {
         });
 
         return new org.springframework.security.core.userdetails.User(
-                userEntity.getName(),
+                userEntity.getEmail(),
                 userEntity.getPassword(),
-                authorityList
-        );
+                authorityList);
     }
 }

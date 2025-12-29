@@ -1,6 +1,5 @@
 package com.uis.schedule.backend.persistence.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -16,10 +15,10 @@ import java.util.Set;
 @Entity
 @Table(name = "users")
 public class UserEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
-    private Long userId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "user_id")
+	private Long userId;
 
 	@Column(unique = true, nullable = false, length = 250)
 	private String email;
@@ -38,7 +37,7 @@ public class UserEntity {
 	@Column(name = "last_session")
 	private LocalDateTime lastSession;
 
-	//Security fields
+	// Security fields
 	@Column(name = "is_enabled")
 	private boolean isEnable;
 
@@ -52,15 +51,18 @@ public class UserEntity {
 	private boolean credentialNoExpired;
 
 	@ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-	@JoinTable(name="user_roles", joinColumns = @JoinColumn(name="user_id"),inverseJoinColumns = @JoinColumn(name="role_id"))
+	@JoinTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
 	private Set<RoleEntity> roles = new HashSet<>();
 
-	public String getLastSession(){
-		return lastSession.toString();
+	public String getLastSession() {
+		return lastSession != null ? lastSession.toString() : null;
 	}
 
-	public void setLastSession(String lastSession){
+	public LocalDateTime getLastSessionDateTime() {
+		return lastSession;
+	}
+
+	public void setLastSession(String lastSession) {
 		this.lastSession = LocalDateTime.parse(lastSession, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 	}
 }
-
