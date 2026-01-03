@@ -17,7 +17,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class UserResponse {
     private Long id;
-    private String name;
+    private String firstName;
+    private String lastName;
+    private String username;
     private String email;
     private boolean active;
     private LocalDateTime lastSession;

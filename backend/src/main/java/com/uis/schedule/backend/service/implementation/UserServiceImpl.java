@@ -90,10 +90,13 @@ public class UserServiceImpl implements UserService {
 
         log.info("Creating new user with email: {}", request.getEmail());
 
-
         try {
+            String username = (request.getFirstName().substring(0, 1) + request.getLastName()).toLowerCase();
+
             UserEntity entity = UserEntity.builder()
-                .name(request.getName())
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .username(username)
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .isEnable(true)
@@ -172,13 +175,17 @@ public class UserServiceImpl implements UserService {
         log.info("Registro interno de un usuario {}.", authSignupRequest.email());
 
         try {
+            String username = (authSignupRequest.firstName().substring(0, 1) + authSignupRequest.lastName()).toLowerCase();
+
             UserEntity user = userRepository
-                    .findUserEntityByEmailOrName(authSignupRequest.email(), authSignupRequest.username())
+                    .findUserEntityByEmailOrUsername(authSignupRequest.email(), username)
                     .orElse(null);
 
             if (Objects.isNull(user)) {
                 UserEntity newUser = new UserEntity();
-                newUser.setName(authSignupRequest.username());
+                newUser.setFirstName(authSignupRequest.firstName());
+                newUser.setLastName(authSignupRequest.lastName());
+                newUser.setUsername(username);
                 newUser.setEmail(authSignupRequest.email());
                 String encodedPassword = passwordEncoder.encode(authSignupRequest.password());
                 log.info("Encoded password: {}", encodedPassword);
@@ -190,10 +197,10 @@ public class UserServiceImpl implements UserService {
 
                 userRepository.save(newUser);
                 log.info("User registered successfully: {}", authSignupRequest.email());
-                return new AuthResponse(authSignupRequest.username(), "User registered successfully", null, true);
+                return new AuthResponse(newUser.getUsername(), "User registered successfully", null, true);
             } else {
-                log.warn("Email already registered: {}", authSignupRequest.email());
-                return new AuthResponse(authSignupRequest.username(), "Email already registered", null, false);
+                log.warn("Email already registered or username taken: {}", authSignupRequest.email());
+                return new AuthResponse(username, "Email already registered or username taken", null, false);
             }
         } catch (Exception ex) {
             log.error("Error during user signup", ex);
@@ -213,7 +220,7 @@ public class UserServiceImpl implements UserService {
                 String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
                         .getUsername();
 
-                UserEntity user = userRepository.findUserEntityByEmailOrName(username, username)
+                UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
                         .orElseThrow(() -> {
                             log.error("Authenticated user not found in database: {}", username);
                             return new UserNotFoundException("Authenticated user not found in database: " + username);
@@ -225,7 +232,7 @@ public class UserServiceImpl implements UserService {
                         user.getRoles().iterator().next().getRoleEnum().name());
 
                 log.info("Login successful for user: {}", username);
-                return new AuthResponse(user.getName(), "Login successful", token, true);
+                return new AuthResponse(user.getFirstName() + " " + user.getLastName(), "Login successful", token, true);
             }
         } catch (Exception e) {
             log.error("Login failed for email: {}", email, e);

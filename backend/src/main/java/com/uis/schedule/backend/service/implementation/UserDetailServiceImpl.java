@@ -39,7 +39,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
-        UserEntity userEntity = userRepository.findUserEntityByEmailOrName(username, username)
+        UserEntity userEntity = userRepository.findUserEntityByEmailOrUsername(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException("El usuario " + username + " no existe."));
 
         List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
@@ -47,11 +47,6 @@ public class UserDetailServiceImpl implements UserDetailsService {
         //Tomamos los roles y los convertimos en un obj que entienda spring security
         userEntity.getRoles()
                 .forEach(role -> authorityList.add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name()))));
-
-        //Tomamos los permisos y los convertimos en un obj que entienda spring security
-        userEntity.getRoles().stream()
-                .flatMap(role-> role.getPermissionList().stream())
-                .forEach(permission -> authorityList.add(new SimpleGrantedAuthority(permission.getName())));
 
         return new User(userEntity.getEmail(),userEntity.getPassword(),
                 userEntity.isEnable(),

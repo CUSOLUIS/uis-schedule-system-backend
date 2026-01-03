@@ -41,7 +41,7 @@ public class UserController {
 			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMIN role")
 	})
 	@GetMapping
-	@PreAuthorize("hasRole('ADMINISTRADOR')")
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<List<UserListDTO>> listAll() {
 		List<UserListDTO> users = userService.listUsers();
 		return ResponseEntity.ok(users);
@@ -53,6 +53,7 @@ public class UserController {
 			@ApiResponse(responseCode = "404", description = "User not found with the specified ID")
 	})
 	@GetMapping("/{id}")
+	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<UserDetailDTO> getUserById(@PathVariable Long id) {
 		return userService.findUserById(id)
 				.map(ResponseEntity::ok)

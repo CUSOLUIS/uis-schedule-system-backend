@@ -25,16 +25,13 @@ public class CustomerDetailService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) {
         // Using email or name as username for authentication
         log.info("Loading user by email or name: {}", username);
-        UserEntity userEntity = userRepository.findUserEntityByEmailOrName(username, username)
+        UserEntity userEntity = userRepository.findUserEntityByEmailOrUsername(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException("User " + username + " not found."));
 
         List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
 
         userEntity.getRoles().forEach(role -> {
             authorityList.add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name())));
-            role.getPermissionList().forEach(permission -> {
-                authorityList.add(new SimpleGrantedAuthority(permission.getName()));
-            });
         });
 
         return new org.springframework.security.core.userdetails.User(

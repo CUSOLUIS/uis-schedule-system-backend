@@ -2,6 +2,7 @@ package com.uis.schedule.backend.presentation.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,9 +19,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateUserRequest {
 
-    @NotBlank(message = "Name is required")
-    @Size(min = 2, max = 256, message = "Name must be between 2 and 256 characters")
-    private String name;
+    @NotBlank(message = "First name is required")
+    @Pattern(regexp = "^[^0-9]*$", message = "First name cannot contain numbers")
+    private String firstName;
+
+    @NotBlank(message = "Last name is required")
+    @Pattern(regexp = "^[^0-9]*$", message = "Last name cannot contain numbers")
+    private String lastName;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Email must be valid")

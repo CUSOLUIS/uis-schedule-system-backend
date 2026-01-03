@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.presentation.dto;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,15 +18,17 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateUserRequest {
 
-    @Size(min = 2, max = 256, message = "Name must be between 2 and 256 characters")
-    private String name;
+    @Size(min = 2, max = 128, message = "First name must be between 2 and 128 characters")
+    @Pattern(regexp = "^[^0-9]*$", message = "First name cannot contain numbers")
+    private String firstName;
+
+    @Size(min = 2, max = 128, message = "Last name must be between 2 and 128 characters")
+    @Pattern(regexp = "^[^0-9]*$", message = "Last name cannot contain numbers")
+    private String lastName;
 
     @Email(message = "Email must be valid")
     @Size(max = 250, message = "Email must not exceed 250 characters")
     private String email;
-
-    @Size(max = 64, message = "Role must not exceed 64 characters")
-    private String role;
 
     private Boolean active;
 }

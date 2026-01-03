@@ -15,7 +15,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserListDTO {
     private Long id;
-    private String name;
+    private String firstName;
+    private String lastName;
+    private String username;
     private String email;
     private boolean active;
 }

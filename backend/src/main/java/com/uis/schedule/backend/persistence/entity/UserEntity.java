@@ -1,6 +1,8 @@
 package com.uis.schedule.backend.persistence.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -20,16 +22,23 @@ public class UserEntity {
 	@Column(name = "user_id")
 	private Long userId;
 
+	@Email
 	@Column(unique = true, nullable = false, length = 250)
 	private String email;
 
 	@Column(length = 256, nullable = false)
 	private String password;
 
-	@Column(length = 256)
-	private String name;
+	@Pattern(regexp = "^[^0-9]*$", message = "First name cannot contain numbers")
+	@Column(name = "first_name", length = 128)
+	private String firstName;
 
-	private String permissions;
+	@Pattern(regexp = "^[^0-9]*$", message = "Last name cannot contain numbers")
+	@Column(name = "last_name", length = 128)
+	private String lastName;
+
+	@Column(unique = true, length = 128)
+	private String username;
 
 	@Column(name = "last_session")
 	private LocalDateTime lastSession;

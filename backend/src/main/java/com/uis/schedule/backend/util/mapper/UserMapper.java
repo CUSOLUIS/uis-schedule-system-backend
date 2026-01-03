@@ -1,6 +1,5 @@
 package com.uis.schedule.backend.util.mapper;
 
-import com.uis.schedule.backend.persistence.entity.PermissionEntity;
 import com.uis.schedule.backend.persistence.entity.UserEntity;
 import com.uis.schedule.backend.presentation.dto.*;
 
@@ -27,7 +26,9 @@ public class UserMapper {
 
 		return UserListDTO.builder()
 				.id(entity.getUserId())
-				.name(entity.getName())
+				.firstName(entity.getFirstName())
+				.lastName(entity.getLastName())
+				.username(entity.getUsername())
 				.email(entity.getEmail())
 				.active(entity.isEnable())
 				.build();
@@ -50,19 +51,13 @@ public class UserMapper {
 						.collect(Collectors.toSet())
 				: Collections.emptySet();
 
-		Set<String> permissionNames = entity.getRoles() != null
-				? entity.getRoles().stream()
-						.flatMap(role -> role.getPermissionList().stream())
-						.map(PermissionEntity::getName)
-						.collect(Collectors.toSet())
-				: Collections.emptySet();
-
 		return UserDetailDTO.builder()
 				.id(entity.getUserId())
-				.name(entity.getName())
+				.firstName(entity.getFirstName())
+				.lastName(entity.getLastName())
+				.username(entity.getUsername())
 				.email(entity.getEmail())
 				.roles(roleNames)
-				.permissions(permissionNames)
 				.active(entity.isEnable())
 				.accountNoExpired(entity.isAccountNoExpired())
 				.accountNoLocked(entity.isAccountNoLocked())
@@ -84,7 +79,9 @@ public class UserMapper {
 
 		return UserResponse.builder()
 				.id(entity.getUserId())
-				.name(entity.getName())
+				.firstName(entity.getFirstName())
+				.lastName(entity.getLastName())
+				.username(entity.getUsername())
 				.email(entity.getEmail())
 				.active(entity.isEnable())
 				.lastSession(entity.getLastSessionDateTime())
@@ -103,8 +100,11 @@ public class UserMapper {
 			return;
 		}
 
-		if (request.getName() != null) {
-			entity.setName(request.getName());
+		if (request.getFirstName() != null) {
+			entity.setFirstName(request.getFirstName());
+		}
+		if (request.getLastName() != null) {
+			entity.setLastName(request.getLastName());
 		}
 		if (request.getEmail() != null) {
 			entity.setEmail(request.getEmail());
@@ -127,10 +127,11 @@ public class UserMapper {
 
 		UserDTO dto = new UserDTO();
 		dto.setId(entity.getUserId());
-		dto.setName(entity.getName());
+		dto.setFirstName(entity.getFirstName());
+		dto.setLastName(entity.getLastName());
+		dto.setUsername(entity.getUsername());
 		dto.setEmail(entity.getEmail());
 		dto.setPassword(entity.getPassword());
-		dto.setPermissions(entity.getPermissions());
 		dto.setActive(entity.isEnable());
 		dto.setLastSession(entity.getLastSession());
 		return dto;
@@ -147,10 +148,11 @@ public class UserMapper {
 
 		UserEntity entity = new UserEntity();
 		entity.setUserId(dto.getId());
-		entity.setName(dto.getName());
+		entity.setFirstName(dto.getFirstName());
+		entity.setLastName(dto.getLastName());
+		entity.setUsername(dto.getUsername());
 		entity.setEmail(dto.getEmail());
 		entity.setPassword(dto.getPassword());
-		entity.setPermissions(dto.getPermissions());
 		entity.setEnable(dto.isActive());
 		if (dto.getLastSession() != null) {
 			entity.setLastSession(dto.getLastSession());
