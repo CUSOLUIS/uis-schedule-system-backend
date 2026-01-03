@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleGeneralException(Exception ex) {
         // It's good practice to log the exception here, but for now we'll keep it simple.
         Map<String, String> error = new HashMap<>();
-        error.put("error", "An internal server error occurred. Please try again later.");
+        error.put("error", "An internal server error occurred. Please try again later." + ex.getMessage());
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

@@ -111,6 +111,7 @@ public class UserController {
 			userService.deleteUser(id);
 			return ResponseEntity.noContent().build();
 		} catch (UserNotFoundException e) {
+			System.err.println(e.getMessage());
 			return ResponseEntity.notFound().build();
 		}
 	}

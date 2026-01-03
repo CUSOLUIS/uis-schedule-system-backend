@@ -90,16 +90,18 @@ public class UserServiceImpl implements UserService {
 
         log.info("Creating new user with email: {}", request.getEmail());
 
-        try {
-            // Encode password before creating entity
-            CreateUserRequest requestWithEncodedPassword = CreateUserRequest.builder()
-                    .name(request.getName())
-                    .email(request.getEmail())
-                    .password(passwordEncoder.encode(request.getPassword()))
-                    .role(request.getRole())
-                    .build();
 
-            UserEntity entity = UserMapper.createRequestToEntity(requestWithEncodedPassword);
+        try {
+            UserEntity entity = UserEntity.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role("ESTUDIANTE")
+                .isEnable(true)
+                .accountNoExpired(true)
+                .accountNoLocked(true)
+                .credentialNoExpired(true)
+                .build();
             UserEntity savedEntity = userRepository.save(entity);
 
             log.info("User created successfully with ID: {}", savedEntity.getUserId());
@@ -182,7 +184,7 @@ public class UserServiceImpl implements UserService {
                 String encodedPassword = passwordEncoder.encode(authSignupRequest.password());
                 log.info("Encoded password: {}", encodedPassword);
                 newUser.setPassword(encodedPassword);
-                newUser.setRole("user");
+                newUser.setRole("ESTUDIANTE");
                 newUser.setEnable(true);
                 newUser.setAccountNoExpired(true);
                 newUser.setAccountNoLocked(true);

@@ -1,7 +1,6 @@
 package com.uis.schedule.backend.util.mapper;
 
 import com.uis.schedule.backend.persistence.entity.PermissionEntity;
-import com.uis.schedule.backend.persistence.entity.PermissionEntity;
 import com.uis.schedule.backend.persistence.entity.UserEntity;
 import com.uis.schedule.backend.presentation.dto.*;
 
@@ -92,30 +91,6 @@ public class UserMapper {
 				.role(entity.getRole())
 				.active(entity.isEnable())
 				.lastSession(entity.getLastSessionDateTime())
-				.build();
-	}
-
-	/**
-	 * Converts CreateUserRequest to UserEntity.
-	 * Note: Password should be encoded before calling this method.
-	 * 
-	 * @param request the create user request
-	 * @return UserEntity ready to be persisted
-	 */
-	public static UserEntity createRequestToEntity(CreateUserRequest request) {
-		if (request == null) {
-			return null;
-		}
-
-		return UserEntity.builder()
-				.name(request.getName())
-				.email(request.getEmail())
-				.password(request.getPassword()) // Should be encoded before calling this
-				.role(request.getRole())
-				.isEnable(true)
-				.accountNoExpired(true)
-				.accountNoLocked(true)
-				.credentialNoExpired(true)
 				.build();
 	}
 

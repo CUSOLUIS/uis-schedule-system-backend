@@ -27,11 +27,14 @@ public class CreateUserRequest {
     @Size(max = 250, message = "Email must not exceed 250 characters")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, max = 256, message = "Password must be between 8 and 256 characters")
-    private String password;
+        @NotBlank(message = "Password is required")
 
-    @NotBlank(message = "Role is required")
-    @Size(max = 64, message = "Role must not exceed 64 characters")
-    private String role;
-}
+        @Size(min = 8, max = 256, message = "Password must be between 8 and 256 characters")
+
+        private String password;
+
+    
+
+        
+
+    }

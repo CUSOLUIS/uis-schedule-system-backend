@@ -2,7 +2,6 @@ package com.uis.schedule.backend.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.validator.constraints.br.CPF;
 
 @Setter
 @Getter
