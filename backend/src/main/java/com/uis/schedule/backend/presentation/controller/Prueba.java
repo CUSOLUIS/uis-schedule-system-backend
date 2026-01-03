@@ -12,14 +12,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class Prueba {
 
     @GetMapping("/hola")
-    @PreAuthorize("hasAuthority('VIEW_SCHEDULE') or hasAuthority('APPROVE_PUBLISH_SCHEDULE')")
+    @PreAuthorize("isAuthenticated()")
     public String prueba(){
         return "Hola mundo";
     }
 
 
     @GetMapping("/hola-secured")
-    @PreAuthorize("hasAuthority('APPROVE_PUBLISH_SCHEDULE')")
+    @PreAuthorize("isAuthenticated()")
     public String pruebaSecured(){
         return "Hola mundo secured";
     }

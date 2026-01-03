@@ -100,13 +100,5 @@ public class JwtFilter extends OncePerRequestFilter {
         return null;
     }
 
-    public Boolean isAdmin(HttpServletRequest request) {
-        Claims claims = getClaimsFromToken(request);
-        return "admin".equals(claims.get("role"));
-    }
 
-    public Boolean isUser(HttpServletRequest request) {
-        Claims claims = getClaimsFromToken(request);
-        return "user".equals(claims.get("role"));
-    }
 }

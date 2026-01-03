@@ -23,7 +23,6 @@ public class UserDetailDTO {
     private String username;
     private String email;
     private Set<String> roles;
-    private Set<String> permissions;
     private boolean active;
     private boolean accountNoExpired;
     private boolean accountNoLocked;
