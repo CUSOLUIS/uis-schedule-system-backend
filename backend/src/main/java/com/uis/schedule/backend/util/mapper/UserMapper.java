@@ -29,7 +29,6 @@ public class UserMapper {
 				.id(entity.getUserId())
 				.name(entity.getName())
 				.email(entity.getEmail())
-				.role(entity.getRole())
 				.active(entity.isEnable())
 				.build();
 	}
@@ -62,7 +61,6 @@ public class UserMapper {
 				.id(entity.getUserId())
 				.name(entity.getName())
 				.email(entity.getEmail())
-				.role(entity.getRole())
 				.roles(roleNames)
 				.permissions(permissionNames)
 				.active(entity.isEnable())
@@ -88,7 +86,6 @@ public class UserMapper {
 				.id(entity.getUserId())
 				.name(entity.getName())
 				.email(entity.getEmail())
-				.role(entity.getRole())
 				.active(entity.isEnable())
 				.lastSession(entity.getLastSessionDateTime())
 				.build();
@@ -112,9 +109,6 @@ public class UserMapper {
 		if (request.getEmail() != null) {
 			entity.setEmail(request.getEmail());
 		}
-		if (request.getRole() != null) {
-			entity.setRole(request.getRole());
-		}
 		if (request.getActive() != null) {
 			entity.setEnable(request.getActive());
 		}
@@ -136,7 +130,6 @@ public class UserMapper {
 		dto.setName(entity.getName());
 		dto.setEmail(entity.getEmail());
 		dto.setPassword(entity.getPassword());
-		dto.setRole(entity.getRole());
 		dto.setPermissions(entity.getPermissions());
 		dto.setActive(entity.isEnable());
 		dto.setLastSession(entity.getLastSession());
@@ -157,7 +150,6 @@ public class UserMapper {
 		entity.setName(dto.getName());
 		entity.setEmail(dto.getEmail());
 		entity.setPassword(dto.getPassword());
-		entity.setRole(dto.getRole());
 		entity.setPermissions(dto.getPermissions());
 		entity.setEnable(dto.isActive());
 		if (dto.getLastSession() != null) {

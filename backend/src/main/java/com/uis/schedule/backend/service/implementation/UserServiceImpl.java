@@ -96,7 +96,6 @@ public class UserServiceImpl implements UserService {
                 .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role("ESTUDIANTE")
                 .isEnable(true)
                 .accountNoExpired(true)
                 .accountNoLocked(true)
@@ -184,7 +183,6 @@ public class UserServiceImpl implements UserService {
                 String encodedPassword = passwordEncoder.encode(authSignupRequest.password());
                 log.info("Encoded password: {}", encodedPassword);
                 newUser.setPassword(encodedPassword);
-                newUser.setRole("ESTUDIANTE");
                 newUser.setEnable(true);
                 newUser.setAccountNoExpired(true);
                 newUser.setAccountNoLocked(true);

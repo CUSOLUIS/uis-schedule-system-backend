@@ -20,7 +20,6 @@ public class UserDetailDTO {
     private Long id;
     private String name;
     private String email;
-    private String role;
     private Set<String> roles;
     private Set<String> permissions;
     private boolean active;

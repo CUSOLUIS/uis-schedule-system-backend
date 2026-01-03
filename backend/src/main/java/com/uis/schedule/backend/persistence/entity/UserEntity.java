@@ -29,9 +29,6 @@ public class UserEntity {
 	@Column(length = 256)
 	private String name;
 
-	@Column(length = 64)
-	private String role;
-
 	private String permissions;
 
 	@Column(name = "last_session")
