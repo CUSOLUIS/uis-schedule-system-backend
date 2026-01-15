@@ -47,7 +47,7 @@ public class UserMapper {
 
 		Set<String> roleNames = entity.getRoles() != null
 				? entity.getRoles().stream()
-						.map(role -> role.getRoleEnum().name())
+						.map(role -> role.getName())
 						.collect(Collectors.toSet())
 				: Collections.emptySet();
 

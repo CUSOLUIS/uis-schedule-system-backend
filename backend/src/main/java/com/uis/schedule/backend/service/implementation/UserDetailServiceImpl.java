@@ -33,9 +33,6 @@ public class UserDetailServiceImpl implements UserDetailsService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-
-
-
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
@@ -44,11 +41,11 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
         List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
 
-        //Tomamos los roles y los convertimos en un obj que entienda spring security
+        // Tomamos los roles y los convertimos en un obj que entienda spring security
         userEntity.getRoles()
-                .forEach(role -> authorityList.add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name()))));
+                .forEach(role -> authorityList.add(new SimpleGrantedAuthority("ROLE_".concat(role.getName()))));
 
-        return new User(userEntity.getEmail(),userEntity.getPassword(),
+        return new User(userEntity.getEmail(), userEntity.getPassword(),
                 userEntity.isEnable(),
                 userEntity.isAccountNoExpired(),
                 userEntity.isCredentialNoExpired(),

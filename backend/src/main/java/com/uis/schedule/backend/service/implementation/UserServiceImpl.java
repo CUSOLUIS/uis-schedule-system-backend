@@ -84,6 +84,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse createUser(CreateUserRequest request) {
+        int min = 1;
+        int max = 1000;
+        // Formula: (int) (Math.random() * (max - min + 1) + min)
+        int randomInt = (int) (Math.random() * (max - min + 1) + min);
+
         if (request == null) {
             throw new IllegalArgumentException("Create user request cannot be null");
         }
@@ -91,19 +96,20 @@ public class UserServiceImpl implements UserService {
         log.info("Creating new user with email: {}", request.getEmail());
 
         try {
-            String username = (request.getFirstName().substring(0, 1) + request.getLastName()).toLowerCase();
+            String username = (request.getFirstName().substring(0, 1) + request.getLastName() + randomInt)
+                    .toLowerCase();
 
             UserEntity entity = UserEntity.builder()
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .username(username)
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .isEnable(true)
-                .accountNoExpired(true)
-                .accountNoLocked(true)
-                .credentialNoExpired(true)
-                .build();
+                    .firstName(request.getFirstName())
+                    .lastName(request.getLastName())
+                    .username(username)
+                    .email(request.getEmail())
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .isEnable(true)
+                    .accountNoExpired(true)
+                    .accountNoLocked(true)
+                    .credentialNoExpired(true)
+                    .build();
             UserEntity savedEntity = userRepository.save(entity);
 
             log.info("User created successfully with ID: {}", savedEntity.getUserId());
@@ -175,7 +181,8 @@ public class UserServiceImpl implements UserService {
         log.info("Registro interno de un usuario {}.", authSignupRequest.email());
 
         try {
-            String username = (authSignupRequest.firstName().substring(0, 1) + authSignupRequest.lastName()).toLowerCase();
+            String username = (authSignupRequest.firstName().substring(0, 1) + authSignupRequest.lastName())
+                    .toLowerCase();
 
             UserEntity user = userRepository
                     .findUserEntityByEmailOrUsername(authSignupRequest.email(), username)
@@ -229,10 +236,11 @@ public class UserServiceImpl implements UserService {
                 String token = jwtUtil.generateToken(
                         user.getUserId(),
                         user.getEmail(),
-                        user.getRoles().iterator().next().getRoleEnum().name());
+                        user.getRoles().iterator().next().getName());
 
                 log.info("Login successful for user: {}", username);
-                return new AuthResponse(user.getFirstName() + " " + user.getLastName(), "Login successful", token, true);
+                return new AuthResponse(user.getFirstName() + " " + user.getLastName(), "Login successful", token,
+                        true);
             }
         } catch (Exception e) {
             log.error("Login failed for email: {}", email, e);

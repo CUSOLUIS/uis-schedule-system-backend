@@ -31,7 +31,7 @@ public class CustomerDetailService implements UserDetailsService {
         List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
 
         userEntity.getRoles().forEach(role -> {
-            authorityList.add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name())));
+            authorityList.add(new SimpleGrantedAuthority("ROLE_".concat(role.getName())));
         });
 
         return new org.springframework.security.core.userdetails.User(
