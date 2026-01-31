@@ -96,6 +96,7 @@ public class UserServiceImpl implements UserService {
         log.info("Creating new user with email: {}", request.getEmail());
 
         try {
+            String email = request.getEmail().toLowerCase();
             String username = (request.getFirstName().substring(0, 1) + request.getLastName() + randomInt)
                     .toLowerCase();
 
@@ -103,7 +104,7 @@ public class UserServiceImpl implements UserService {
                     .firstName(request.getFirstName())
                     .lastName(request.getLastName())
                     .username(username)
-                    .email(request.getEmail())
+                    .email(email)
                     .password(passwordEncoder.encode(request.getPassword()))
                     .isEnable(true)
                     .accountNoExpired(true)
@@ -142,6 +143,10 @@ public class UserServiceImpl implements UserService {
                     return new UserNotFoundException("User not found with id: " + id);
                 });
 
+        if (request.getEmail() != null) {
+            request.setEmail(request.getEmail().toLowerCase());
+        }
+
         try {
             UserMapper.updateEntityFromRequest(userToUpdate, request);
             UserEntity updatedUser = userRepository.save(userToUpdate);
@@ -178,14 +183,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public AuthResponse signUp(AuthSignupRequest authSignupRequest) {
-        log.info("Registro interno de un usuario {}.", authSignupRequest.email());
+        String email = authSignupRequest.email().toLowerCase();
+        log.info("Registro interno de un usuario {}.", email);
 
         try {
             String username = (authSignupRequest.firstName().substring(0, 1) + authSignupRequest.lastName())
                     .toLowerCase();
 
             UserEntity user = userRepository
-                    .findUserEntityByEmailOrUsername(authSignupRequest.email(), username)
+                    .findUserEntityByEmailOrUsername(email, username)
                     .orElse(null);
 
             if (Objects.isNull(user)) {
@@ -193,7 +199,7 @@ public class UserServiceImpl implements UserService {
                 newUser.setFirstName(authSignupRequest.firstName());
                 newUser.setLastName(authSignupRequest.lastName());
                 newUser.setUsername(username);
-                newUser.setEmail(authSignupRequest.email());
+                newUser.setEmail(email);
                 String encodedPassword = passwordEncoder.encode(authSignupRequest.password());
                 log.info("Encoded password: {}", encodedPassword);
                 newUser.setPassword(encodedPassword);
@@ -217,11 +223,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public AuthResponse login(String email, String password) {
-        log.info("Login attempt for email: {}", email);
+        String normalizedEmail = email.toLowerCase();
+        log.info("Login attempt for email: {}", normalizedEmail);
 
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, password));
+                    new UsernamePasswordAuthenticationToken(normalizedEmail, password));
 
             if (authentication.isAuthenticated()) {
                 String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())

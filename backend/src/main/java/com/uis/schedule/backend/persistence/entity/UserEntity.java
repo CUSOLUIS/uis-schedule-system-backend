@@ -72,4 +72,12 @@ public class UserEntity {
 	public void setLastSession(String lastSession) {
 		this.lastSession = LocalDateTime.parse(lastSession, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 	}
+
+	@PrePersist
+	@PreUpdate
+	private void normalizeEmail() {
+		if (this.email != null) {
+			this.email = this.email.toLowerCase();
+		}
+	}
 }
