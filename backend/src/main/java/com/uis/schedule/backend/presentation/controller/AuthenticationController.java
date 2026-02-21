@@ -1,6 +1,12 @@
 package com.uis.schedule.backend.presentation.controller;
 
-import java.util.Map;
+import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
+import com.uis.schedule.backend.presentation.dto.AuthResponse;
+import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,10 +17,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.uis.schedule.backend.service.interfaces.UserService;
-import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
-import com.uis.schedule.backend.util.RequestResponseUtils;
-
-import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/auth")
@@ -26,23 +28,37 @@ public class AuthenticationController {
         this.userService = userService;
     }
 
+    @Operation(summary = "Register a new user", description = "Creates a new user in the system and returns a JWT token upon successful registration.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User registered successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid input or user with the same email already exists"),
+            @ApiResponse(responseCode = "500", description = "Internal server error during registration")
+    })
     @PostMapping("/signup")
-    public ResponseEntity<String> signUp(@RequestBody(required = true) Map<String, String> requestMap) {
+    public ResponseEntity<AuthResponse> signUp(@RequestBody(required = true) AuthSignupRequest authSignupRequest) {
         try {
-            return userService.signUp(requestMap);
+            AuthResponse authResponse = userService.signUp(authSignupRequest);
+            return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return RequestResponseUtils.getResponseEntity("Algo salió mal", HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
     }
 
+    @Operation(summary = "Authenticate a user", description = "Logs in a user with email/username and password, and returns a JWT token.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login successful"),
+            @ApiResponse(responseCode = "400", description = "Bad credentials"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @PostMapping("/login")
-    public ResponseEntity<String> login(@Valid @RequestBody AuthLoginRequest request) {
+    public ResponseEntity<AuthResponse> login(@RequestBody(required = true) AuthLoginRequest authLoginRequest) {
         try {
-            return userService.login(request);
+            AuthResponse authResponse = userService.login(authLoginRequest.usernameOrEmail(), authLoginRequest.password());
+            return ResponseEntity.ok(authResponse);
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return RequestResponseUtils.getResponseEntity("Algo salió mal", HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
     }
 }

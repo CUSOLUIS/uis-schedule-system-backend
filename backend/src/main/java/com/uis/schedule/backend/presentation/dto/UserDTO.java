@@ -9,16 +9,16 @@ import lombok.*;
 @Setter
 public class UserDTO {
 	private Long id;
-	private String name;
+	private String firstName;
+	private String lastName;
+	private String username;
 	private String email;
 	private String password;
-	private String role;
-	private String permissions;
 	private boolean active;
 	private LocalDateTime lastSession;
 
 	public String getLastSession(){
-		return lastSession.toString();
+		return lastSession != null ? lastSession.toString() : null;
 	}
 
 	public void setLastSession(String lastSession){

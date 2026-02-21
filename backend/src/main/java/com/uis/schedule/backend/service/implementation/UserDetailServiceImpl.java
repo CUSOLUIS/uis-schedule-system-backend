@@ -33,27 +33,19 @@ public class UserDetailServiceImpl implements UserDetailsService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-
-
-
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
-        UserEntity userEntity = userRepository.findUserEntityByEmail(username)
+        UserEntity userEntity = userRepository.findUserEntityByEmailOrUsername(username, username)
                 .orElseThrow(() -> new UsernameNotFoundException("El usuario " + username + " no existe."));
 
         List<SimpleGrantedAuthority> authorityList = new ArrayList<>();
 
-        //Tomamos los roles y los convertimos en un obj que entienda spring security
+        // Tomamos los roles y los convertimos en un obj que entienda spring security
         userEntity.getRoles()
-                .forEach(role -> authorityList.add(new SimpleGrantedAuthority("ROLE_".concat(role.getRoleEnum().name()))));
+                .forEach(role -> authorityList.add(new SimpleGrantedAuthority("ROLE_".concat(role.getName()))));
 
-        //Tomamos los permisos y los convertimos en un obj que entienda spring security
-        userEntity.getRoles().stream()
-                .flatMap(role-> role.getPermissionList().stream())
-                .forEach(permission -> authorityList.add(new SimpleGrantedAuthority(permission.getName())));
-
-        return new User(userEntity.getEmail(),userEntity.getPassword(),
+        return new User(userEntity.getEmail(), userEntity.getPassword(),
                 userEntity.isEnable(),
                 userEntity.isAccountNoExpired(),
                 userEntity.isCredentialNoExpired(),
@@ -63,14 +55,14 @@ public class UserDetailServiceImpl implements UserDetailsService {
 
     public AuthResponse loginUser(AuthLoginRequest authLoginRequest) {
 
-        String username = authLoginRequest.username();
+        String email = authLoginRequest.usernameOrEmail();
         String password = authLoginRequest.password();
 
-        Authentication authentication = this.authenticate(username, password);
+        Authentication authentication = this.authenticate(email, password);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String accessToken = jwtUtils.createToken(authentication);
-        AuthResponse authResponse = new AuthResponse(username, "Usuario Logeado exitosamente", accessToken, true);
+        AuthResponse authResponse = new AuthResponse(email, "Usuario Logeado exitosamente", accessToken, true);
         return authResponse;
     }
 
