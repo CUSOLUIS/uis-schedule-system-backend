@@ -2,6 +2,7 @@ package com.uis.schedule.backend.service.interfaces;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import com.uis.schedule.backend.presentation.dto.*;
 
@@ -24,7 +25,7 @@ public interface UserService {
 	 * @param id the user ID
 	 * @return Optional containing UserDetailDTO if found
 	 */
-	Optional<UserDetailDTO> findUserById(Long id);
+	Optional<UserDetailDTO> findUserById(UUID id);
 
 	/**
 	 * Creates a new user.
@@ -41,14 +42,14 @@ public interface UserService {
 	 * @param request the update user request
 	 * @return UserResponse with updated user data
 	 */
-	UserResponse updateUser(Long id, UpdateUserRequest request);
+	UserResponse updateUser(UUID id, UpdateUserRequest request);
 
 	/**
 	 * Deletes a user by ID.
 	 * 
 	 * @param id the user ID
 	 */
-	void deleteUser(Long id);
+	void deleteUser(UUID id);
 
 	// Authentication methods (kept for backward compatibility)
 

@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.presentation.controller;
 
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.validation.Valid;
 
@@ -54,7 +55,7 @@ public class UserController {
 	})
 	@GetMapping("/{id}")
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<UserDetailDTO> getUserById(@PathVariable Long id) {
+	public ResponseEntity<UserDetailDTO> getUserById(@PathVariable UUID id) {
 		return userService.findUserById(id)
 				.map(ResponseEntity::ok)
 				.orElse(ResponseEntity.notFound().build());
@@ -87,7 +88,7 @@ public class UserController {
 	@PutMapping("/{id}")
 	@PreAuthorize("hasRole('ADMINISTRADOR')")
 	public ResponseEntity<UserResponse> updateUser(
-			@PathVariable Long id,
+			@PathVariable UUID id,
 			@Valid @RequestBody UpdateUserRequest request) {
 		try {
 			UserResponse updatedUser = userService.updateUser(id, request);
@@ -107,7 +108,7 @@ public class UserController {
 	})
 	@DeleteMapping("/{id}")
 	@PreAuthorize("hasRole('ADMINISTRADOR')")
-	public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+	public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
 		try {
 			userService.deleteUser(id);
 			return ResponseEntity.noContent().build();

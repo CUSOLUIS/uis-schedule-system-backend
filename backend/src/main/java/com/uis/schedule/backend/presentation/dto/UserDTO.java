@@ -3,12 +3,14 @@ package com.uis.schedule.backend.presentation.dto;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import java.util.UUID;
+
 import lombok.*;
 
 @Getter
 @Setter
 public class UserDTO {
-	private Long id;
+	private UUID id;
 	private String firstName;
 	private String lastName;
 	private String username;

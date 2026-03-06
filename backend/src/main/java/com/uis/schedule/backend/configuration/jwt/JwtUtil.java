@@ -3,6 +3,7 @@ package com.uis.schedule.backend.configuration.jwt;
 import java.sql.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -38,7 +39,7 @@ public class JwtUtil {
         return extractExpiration(token).before(new Date(System.currentTimeMillis()));
     }
 
-    public String generateToken(Long id, String username, String role) {
+    public String generateToken(UUID id, String username, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("id", id);
         claims.put("role", role);

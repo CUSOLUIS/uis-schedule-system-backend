@@ -9,6 +9,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Set;
 
+import java.util.UUID;
+
 @Setter
 @Getter
 @Builder
@@ -18,9 +20,9 @@ import java.util.Set;
 @Table(name = "users")
 public class UserEntity {
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@GeneratedValue(strategy = GenerationType.UUID)
 	@Column(name = "user_id")
-	private Long userId;
+	private UUID userId;
 
 	@Email
 	@Column(unique = true, nullable = false, length = 250)

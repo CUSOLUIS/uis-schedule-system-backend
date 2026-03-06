@@ -3,6 +3,7 @@ package com.uis.schedule.backend.service.implementation;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,7 +73,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public java.util.Optional<UserDetailDTO> findUserById(Long id) {
+    public java.util.Optional<UserDetailDTO> findUserById(UUID id) {
         if (id == null) {
             log.warn("Attempted to find user with null ID");
             return java.util.Optional.empty();
@@ -127,7 +128,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponse updateUser(Long id, UpdateUserRequest request) {
+    public UserResponse updateUser(UUID id, UpdateUserRequest request) {
         if (id == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
@@ -165,7 +166,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
