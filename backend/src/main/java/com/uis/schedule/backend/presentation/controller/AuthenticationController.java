@@ -42,7 +42,7 @@ public class AuthenticationController {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong"));
     }
 
     @Operation(summary = "Authenticate a user", description = "Logs in a user with email/username and password, and returns a JWT token.")
@@ -59,6 +59,6 @@ public class AuthenticationController {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong"));
     }
 }

@@ -211,14 +211,26 @@ public class UserServiceImpl implements UserService {
 
                 userRepository.save(newUser);
                 log.info("User registered successfully: {}", authSignupRequest.email());
-                return new AuthResponse(newUser.getUsername(), "User registered successfully", null, true);
+
+                // No roles assigned yet in this simplified signup, but let's assume default or handle null
+                String role = (newUser.getRoles() != null && !newUser.getRoles().isEmpty())
+                        ? newUser.getRoles().iterator().next().getName()
+                        : "ROLE_USER";
+
+                String token = jwtUtil.generateToken(
+                        newUser.getUserId(),
+                        newUser.getUsername(),
+                        role,
+                        newUser.isEnable());
+
+                return new AuthResponse(token, "User registered successfully");
             } else {
                 log.warn("Email already registered or username taken: {}", authSignupRequest.email());
-                return new AuthResponse(username, "Email already registered or username taken", null, false);
+                return new AuthResponse(null, "Email already registered or username taken");
             }
         } catch (Exception ex) {
             log.error("Error during user signup", ex);
-            return new AuthResponse(null, "Something went wrong", null, false);
+            return new AuthResponse(null, "Something went wrong");
         }
     }
 
@@ -243,17 +255,17 @@ public class UserServiceImpl implements UserService {
 
                 String token = jwtUtil.generateToken(
                         user.getUserId(),
-                        user.getEmail(),
-                        user.getRoles().iterator().next().getName());
+                        user.getUsername(),
+                        user.getRoles().iterator().next().getName(),
+                        user.isEnable());
 
                 log.info("Login successful for user: {}", username);
-                return new AuthResponse(user.getFirstName() + " " + user.getLastName(), "Login successful", token,
-                        true);
+                return new AuthResponse(token, "Login successful");
             }
         } catch (Exception e) {
             log.error("Login failed for email: {}", email, e);
         }
 
-        return new AuthResponse(null, "Bad credentials", null, false);
+        return new AuthResponse(null, "Bad credentials");
     }
 }

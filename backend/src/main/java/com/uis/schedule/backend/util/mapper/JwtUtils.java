@@ -25,10 +25,17 @@ public class JwtUtils {
     @Value("${security.jwt.user.generator}")
     private String userGenerator;
 
-    public String createToken(Authentication authentication){
+    public String createToken(Authentication authentication) {
         Algorithm algorithm = Algorithm.HMAC256(this.privateKey);
 
-        String email = authentication.getPrincipal().toString();
+        String username = authentication.getName();
+        boolean status = true; // Default to true or extract from UserDetails if available
+
+        if (authentication.getPrincipal() instanceof org.springframework.security.core.userdetails.UserDetails) {
+            org.springframework.security.core.userdetails.UserDetails user = (org.springframework.security.core.userdetails.UserDetails) authentication
+                    .getPrincipal();
+            status = user.isEnabled();
+        }
 
         String authorities = authentication.getAuthorities()
                 .stream()
@@ -37,16 +44,17 @@ public class JwtUtils {
 
         String jwtToken = JWT.create()
                 .withIssuer(this.userGenerator)
-                .withSubject(email)
+                .withSubject(username)
+                .withClaim("username", username)
+                .withClaim("status", status)
                 .withClaim("authorities", authorities)
                 .withIssuedAt(new Date())
-                .withExpiresAt(new Date(System.currentTimeMillis()+1800000))
+                .withExpiresAt(new Date(System.currentTimeMillis() + 1800000))
                 .withJWTId(UUID.randomUUID().toString())
                 .withNotBefore(new Date(System.currentTimeMillis()))
                 .sign(algorithm);
 
         return jwtToken;
-
     }
 
     public DecodedJWT validateToken(String token){

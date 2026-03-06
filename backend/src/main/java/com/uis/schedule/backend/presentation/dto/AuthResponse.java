@@ -2,10 +2,8 @@ package com.uis.schedule.backend.presentation.dto;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
-@JsonPropertyOrder({"username", "message", "status", "jwt"})
+@JsonPropertyOrder({"token", "message"})
 public record AuthResponse(
-        String username,
-        String message,
-        String jwt,
-        Boolean status) {
+        String token,
+        String message) {
 }

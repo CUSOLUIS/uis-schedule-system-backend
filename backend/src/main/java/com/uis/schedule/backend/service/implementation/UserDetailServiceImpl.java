@@ -62,7 +62,7 @@ public class UserDetailServiceImpl implements UserDetailsService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         String accessToken = jwtUtils.createToken(authentication);
-        AuthResponse authResponse = new AuthResponse(email, "Usuario Logeado exitosamente", accessToken, true);
+        AuthResponse authResponse = new AuthResponse(accessToken, "Usuario Logeado exitosamente");
         return authResponse;
     }
 
