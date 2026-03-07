@@ -32,6 +32,26 @@ public interface UserService {
 	PaginatedResponse<UserListDTO> listAllUsersIncludingInactive(int page, int size);
 
 	/**
+	 * Finds users by their enable status with pagination.
+	 * 
+	 * @param status the status to filter by
+	 * @param page   page number (0-indexed)
+	 * @param size   number of items per page
+	 * @return PaginatedResponse of UserListDTO
+	 */
+	PaginatedResponse<UserListDTO> findByStatus(boolean status, int page, int size);
+
+	/**
+	 * Finds users by their role name with pagination.
+	 * 
+	 * @param roleName the role name to filter by
+	 * @param page     page number (0-indexed)
+	 * @param size     number of items per page
+	 * @return PaginatedResponse of UserListDTO
+	 */
+	PaginatedResponse<UserListDTO> findByRole(String roleName, int page, int size);
+
+	/**
 	 * Finds a user by their ID with complete details.
 	 * 
 	 * @param id the user ID

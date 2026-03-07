@@ -17,6 +17,11 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
 
     Page<UserEntity> findAllByIsEnableTrue(Pageable pageable);
 
+    Page<UserEntity> findAllByIsEnable(boolean isEnable, Pageable pageable);
+
+    @EntityGraph(attributePaths = { "roles" })
+    Page<UserEntity> findByRolesName(String roleName, Pageable pageable);
+
     Page<UserEntity> findAll(Pageable pageable);
 
     Optional<UserEntity> findByUserIdAndIsEnableTrue(UUID userId);

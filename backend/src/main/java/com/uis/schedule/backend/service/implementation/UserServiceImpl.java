@@ -1,6 +1,5 @@
 package com.uis.schedule.backend.service.implementation;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -192,6 +191,36 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<UserListDTO> findByStatus(boolean status, int page, int size) {
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size);
+            org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAllByIsEnable(status,
+                    pageable);
+            return convertToPaginatedResponse(usersPage);
+        } catch (Exception e) {
+            log.error("Error retrieving users by status: {}", status, e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<UserListDTO> findByRole(String roleName, int page, int size) {
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size);
+            org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findByRolesName(roleName,
+                    pageable);
+            return convertToPaginatedResponse(usersPage);
+        } catch (Exception e) {
+            log.error("Error retrieving users by role: {}", roleName, e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    @Override
     public void deleteUser(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("User ID cannot be null");
@@ -199,15 +228,29 @@ public class UserServiceImpl implements UserService {
 
         log.info("Soft deleting user with ID: {}", id);
 
-        UserEntity user = userRepository.findByUserIdAndIsEnableTrue(id)
+        // We use findById here to see if user exists, regardless of current enable status
+        UserEntity user = userRepository.findById(id)
                 .orElseThrow(() -> {
-                    log.error("User not found or already disabled with ID: {}", id);
-                    return new UserNotFoundException("User not found or already disabled with id: " + id);
+                    log.error("User not found with ID: {}", id);
+                    return new UserNotFoundException("User not found with id: " + id);
                 });
+
+        if (!user.isEnable()) {
+            throw new IllegalArgumentException("User is already disabled (soft-deleted)");
+        }
+
+        // Protection: An admin cannot delete another admin
+        boolean isTargetAdmin = user.getRoles().stream()
+                .anyMatch(role -> role.getName().equals("ADMINISTRADOR"));
+
+        if (isTargetAdmin) {
+            log.warn("Attempt to delete an ADMINISTRADOR account blocked for ID: {}", id);
+            throw new IllegalStateException("Security protection: Users with ADMINISTRADOR role cannot be deleted.");
+        }
 
         user.setEnable(false);
         userRepository.save(user);
-        
+
         log.info("User soft-deleted successfully with ID: {}", id);
     }
 

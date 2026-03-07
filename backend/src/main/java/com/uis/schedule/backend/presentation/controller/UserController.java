@@ -76,6 +76,48 @@ public class UserController {
 		}
 	}
 
+	@Operation(summary = "Get users by status", description = "Retrieves a paginated list of users filtered by their enable status. Requires ADMINISTRADOR role.")
+	@ApiResponses(value = {
+			@ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of users by status"),
+			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRADOR role"),
+			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
+	})
+	@GetMapping("/status/{status}")
+	@PreAuthorize("hasRole('ADMINISTRADOR')")
+	public ResponseEntity<?> getByStatus(
+			@PathVariable boolean status,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		try {
+			PaginatedResponse<UserListDTO> users = userService.findByStatus(status, page, size);
+			return ResponseEntity.ok(users);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new AuthResponse(null, "Error retrieving users by status: " + e.getMessage()));
+		}
+	}
+
+	@Operation(summary = "Get users by role", description = "Retrieves a paginated list of users filtered by their role name. Requires ADMINISTRADOR role.")
+	@ApiResponses(value = {
+			@ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of users by role"),
+			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRADOR role"),
+			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
+	})
+	@GetMapping("/role/{roleName}")
+	@PreAuthorize("hasRole('ADMINISTRADOR')")
+	public ResponseEntity<?> getByRole(
+			@PathVariable String roleName,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		try {
+			PaginatedResponse<UserListDTO> users = userService.findByRole(roleName, page, size);
+			return ResponseEntity.ok(users);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new AuthResponse(null, "Error retrieving users by role: " + e.getMessage()));
+		}
+	}
+
 	@Operation(summary = "Get user by ID", description = "Retrieves detailed information of a single user by their ID.")
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "Successfully retrieved the user"),
