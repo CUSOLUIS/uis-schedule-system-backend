@@ -53,22 +53,48 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserListDTO> listUsers() {
+    public PaginatedResponse<UserListDTO> listUsers(int page, int size) {
         try {
-            List<UserEntity> users = userRepository.findAllByIsEnableTrue();
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size);
+            org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAllByIsEnableTrue(pageable);
 
-            if (users.isEmpty()) {
-                log.info("No active users found in database");
-                return Collections.emptyList();
-            }
-
-            return users.stream()
-                    .map(UserMapper::entityToListDTO)
-                    .collect(Collectors.toList());
+            return convertToPaginatedResponse(usersPage);
         } catch (Exception e) {
-            log.error("Error retrieving users list", e);
-            return Collections.emptyList();
+            log.error("Error retrieving active users list", e);
+            return new PaginatedResponse<>();
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<UserListDTO> listAllUsersIncludingInactive(int page, int size) {
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size);
+            org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAll(pageable);
+
+            return convertToPaginatedResponse(usersPage);
+        } catch (Exception e) {
+            log.error("Error retrieving all users list", e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    private PaginatedResponse<UserListDTO> convertToPaginatedResponse(
+            org.springframework.data.domain.Page<UserEntity> usersPage) {
+        List<UserListDTO> content = usersPage.getContent().stream()
+                .map(UserMapper::entityToListDTO)
+                .collect(Collectors.toList());
+
+        return PaginatedResponse.<UserListDTO>builder()
+                .content(content)
+                .pageNumber(usersPage.getNumber())
+                .pageSize(usersPage.getSize())
+                .totalElements(usersPage.getTotalElements())
+                .totalPages(usersPage.getTotalPages())
+                .last(usersPage.isLast())
+                .build();
     }
 
     @Override

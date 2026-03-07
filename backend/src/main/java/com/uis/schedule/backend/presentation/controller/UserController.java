@@ -36,21 +36,43 @@ public class UserController {
 		this.userService = userService;
 	}
 
-	@Operation(summary = "List all users", description = "Retrieves a list of all registered users with minimal information. Requires ADMIN role. Returns empty list if no users exist.")
+	@Operation(summary = "List active users with pagination", description = "Retrieves a paginated list of active users. Requires authentication.")
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Successfully retrieved the list of users (may be empty)"),
-			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMIN role"),
+			@ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of active users"),
+			@ApiResponse(responseCode = "403", description = "Forbidden - User not authenticated"),
 			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
 	})
 	@GetMapping
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<?> listAll() {
+	public ResponseEntity<?> listAll(
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
 		try {
-			List<UserListDTO> users = userService.listUsers();
+			PaginatedResponse<UserListDTO> users = userService.listUsers(page, size);
 			return ResponseEntity.ok(users);
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new AuthResponse(null, "Error retrieving users: " + e.getMessage()));
+		}
+	}
+
+	@Operation(summary = "List all users including inactive with pagination", description = "Retrieves a paginated list of all users, including those that are inactive. Requires ADMINISTRADOR role.")
+	@ApiResponses(value = {
+			@ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of all users"),
+			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRADOR role"),
+			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
+	})
+	@GetMapping("/all")
+	@PreAuthorize("hasRole('ADMINISTRADOR')")
+	public ResponseEntity<?> listAllWithInactive(
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		try {
+			PaginatedResponse<UserListDTO> users = userService.listAllUsersIncludingInactive(page, size);
+			return ResponseEntity.ok(users);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new AuthResponse(null, "Error retrieving all users: " + e.getMessage()));
 		}
 	}
 

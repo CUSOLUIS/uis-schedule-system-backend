@@ -13,11 +13,23 @@ import com.uis.schedule.backend.presentation.dto.*;
 public interface UserService {
 
 	/**
-	 * Retrieves a list of all users with minimal information.
+	 * Retrieves a list of active users with minimal information and pagination.
 	 * 
-	 * @return List of UserListDTO, empty list if no users exist
+	 * @param page page number (0-indexed)
+	 * @param size number of items per page
+	 * @return PaginatedResponse of UserListDTO
 	 */
-	List<UserListDTO> listUsers();
+	PaginatedResponse<UserListDTO> listUsers(int page, int size);
+
+	/**
+	 * Retrieves all users (including inactive ones) with minimal information and
+	 * pagination.
+	 * 
+	 * @param page page number (0-indexed)
+	 * @param size number of items per page
+	 * @return PaginatedResponse of UserListDTO
+	 */
+	PaginatedResponse<UserListDTO> listAllUsersIncludingInactive(int page, int size);
 
 	/**
 	 * Finds a user by their ID with complete details.
