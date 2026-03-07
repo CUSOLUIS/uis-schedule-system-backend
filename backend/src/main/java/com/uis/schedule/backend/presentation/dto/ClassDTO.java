@@ -10,6 +10,6 @@ import lombok.Setter;
 public class ClassDTO {
 	private Long classId;
 	private String classType;
-	private UserDTO user;
+	private UserListDTO user;
 	private GroupDTO group;
 }

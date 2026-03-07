@@ -39,82 +39,109 @@ public class UserController {
 	@Operation(summary = "List all users", description = "Retrieves a list of all registered users with minimal information. Requires ADMIN role. Returns empty list if no users exist.")
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "Successfully retrieved the list of users (may be empty)"),
-			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMIN role")
+			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMIN role"),
+			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
 	})
 	@GetMapping
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<List<UserListDTO>> listAll() {
-		List<UserListDTO> users = userService.listUsers();
-		return ResponseEntity.ok(users);
+	public ResponseEntity<?> listAll() {
+		try {
+			List<UserListDTO> users = userService.listUsers();
+			return ResponseEntity.ok(users);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new AuthResponse(null, "Error retrieving users: " + e.getMessage()));
+		}
 	}
 
 	@Operation(summary = "Get user by ID", description = "Retrieves detailed information of a single user by their ID.")
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "Successfully retrieved the user"),
-			@ApiResponse(responseCode = "404", description = "User not found with the specified ID")
+			@ApiResponse(responseCode = "404", description = "User not found with the specified ID", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class))),
+			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
 	})
 	@GetMapping("/{id}")
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<UserDetailDTO> getUserById(@PathVariable UUID id) {
-		return userService.findUserById(id)
-				.map(ResponseEntity::ok)
-				.orElse(ResponseEntity.notFound().build());
+	public ResponseEntity<?> getUserById(@PathVariable UUID id) {
+		try {
+			java.util.Optional<UserDetailDTO> user = userService.findUserById(id);
+			if (user.isPresent()) {
+				return ResponseEntity.ok(user.get());
+			} else {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body(new AuthResponse(null, "User not found with ID: " + id));
+			}
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new AuthResponse(null, "Error retrieving user: " + e.getMessage()));
+		}
 	}
 
 	@Operation(summary = "Create a new user", description = "Creates a new user in the system. Validates input data.")
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "201", description = "User created successfully"),
-			@ApiResponse(responseCode = "400", description = "Invalid user data or email already in use"),
-			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions")
+			@ApiResponse(responseCode = "400", description = "Invalid user data or email already in use", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class))),
+			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
+			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
 	})
 	@PostMapping
 	@PreAuthorize("hasRole('ADMINISTRADOR')")
-	public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+	public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
 		try {
 			UserResponse createdUser = userService.createUser(request);
 			return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
 		} catch (IllegalArgumentException e) {
-			return ResponseEntity.badRequest().build();
+			return ResponseEntity.badRequest().body(new AuthResponse(null, e.getMessage()));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new AuthResponse(null, "User creation failed: " + e.getMessage()));
 		}
 	}
 
 	@Operation(summary = "Update an existing user", description = "Updates an existing user's details by their ID. Only provided fields will be updated.")
 	@ApiResponses(value = {
 			@ApiResponse(responseCode = "200", description = "User updated successfully"),
-			@ApiResponse(responseCode = "400", description = "Invalid user data or email already in use"),
+			@ApiResponse(responseCode = "400", description = "Invalid user data or email already in use", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class))),
 			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
-			@ApiResponse(responseCode = "404", description = "User not found with the specified ID")
+			@ApiResponse(responseCode = "404", description = "User not found with the specified ID", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class))),
+			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
 	})
 	@PutMapping("/{id}")
 	@PreAuthorize("hasRole('ADMINISTRADOR')")
-	public ResponseEntity<UserResponse> updateUser(
+	public ResponseEntity<?> updateUser(
 			@PathVariable UUID id,
 			@Valid @RequestBody UpdateUserRequest request) {
 		try {
 			UserResponse updatedUser = userService.updateUser(id, request);
 			return ResponseEntity.ok(updatedUser);
 		} catch (UserNotFoundException e) {
-			return ResponseEntity.notFound().build();
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new AuthResponse(null, e.getMessage()));
 		} catch (IllegalArgumentException e) {
-			return ResponseEntity.badRequest().build();
+			return ResponseEntity.badRequest().body(new AuthResponse(null, e.getMessage()));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new AuthResponse(null, "Update failed: " + e.getMessage()));
 		}
 	}
 
 	@Operation(summary = "Delete a user by ID", description = "Deletes a user from the system by their ID.")
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "204", description = "User deleted successfully"),
+			@ApiResponse(responseCode = "200", description = "User deleted successfully", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class))),
 			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
-			@ApiResponse(responseCode = "404", description = "User not found with the specified ID")
+			@ApiResponse(responseCode = "404", description = "User not found with the specified ID", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class))),
+			@ApiResponse(responseCode = "500", description = "Internal server error", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = AuthResponse.class)))
 	})
 	@DeleteMapping("/{id}")
 	@PreAuthorize("hasRole('ADMINISTRADOR')")
-	public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+	public ResponseEntity<?> deleteUser(@PathVariable UUID id) {
 		try {
 			userService.deleteUser(id);
-			return ResponseEntity.noContent().build();
+			return ResponseEntity.ok(new AuthResponse(null, "User deleted successfully (soft delete)"));
 		} catch (UserNotFoundException e) {
-			System.err.println(e.getMessage());
-			return ResponseEntity.notFound().build();
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new AuthResponse(null, e.getMessage()));
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new AuthResponse(null, "Deletion failed: " + e.getMessage()));
 		}
 	}
 }

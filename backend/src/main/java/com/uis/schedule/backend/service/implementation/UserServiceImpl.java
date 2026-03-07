@@ -55,10 +55,10 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public List<UserListDTO> listUsers() {
         try {
-            List<UserEntity> users = userRepository.findAll();
+            List<UserEntity> users = userRepository.findAllByIsEnableTrue();
 
             if (users.isEmpty()) {
-                log.info("No users found in database");
+                log.info("No active users found in database");
                 return Collections.emptyList();
             }
 
@@ -79,7 +79,7 @@ public class UserServiceImpl implements UserService {
             return java.util.Optional.empty();
         }
 
-        return userRepository.findById(id)
+        return userRepository.findByUserIdAndIsEnableTrue(id)
                 .map(UserMapper::entityToDetailDTO);
     }
 
@@ -171,15 +171,18 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("User ID cannot be null");
         }
 
-        log.info("Deleting user with ID: {}", id);
+        log.info("Soft deleting user with ID: {}", id);
 
-        if (!userRepository.existsById(id)) {
-            log.error("User not found with ID: {}", id);
-            throw new UserNotFoundException("User not found with id: " + id);
-        }
+        UserEntity user = userRepository.findByUserIdAndIsEnableTrue(id)
+                .orElseThrow(() -> {
+                    log.error("User not found or already disabled with ID: {}", id);
+                    return new UserNotFoundException("User not found or already disabled with id: " + id);
+                });
 
-        userRepository.deleteById(id);
-        log.info("User deleted successfully with ID: {}", id);
+        user.setEnable(false);
+        userRepository.save(user);
+        
+        log.info("User soft-deleted successfully with ID: {}", id);
     }
 
     @Override
@@ -215,11 +218,12 @@ public class UserServiceImpl implements UserService {
                 // No roles assigned yet in this simplified signup, but let's assume default or handle null
                 String role = (newUser.getRoles() != null && !newUser.getRoles().isEmpty())
                         ? newUser.getRoles().iterator().next().getName()
-                        : "ROLE_USER";
+                        : "USER"; // No prefix here
 
                 String token = jwtUtil.generateToken(
                         newUser.getUserId(),
                         newUser.getUsername(),
+                        newUser.getEmail(),
                         role,
                         newUser.isEnable());
 
@@ -253,13 +257,19 @@ public class UserServiceImpl implements UserService {
                             return new UserNotFoundException("Authenticated user not found in database: " + username);
                         });
 
+                String role = "USER";
+                if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+                    role = user.getRoles().iterator().next().getName();
+                }
+
                 String token = jwtUtil.generateToken(
                         user.getUserId(),
                         user.getUsername(),
-                        user.getRoles().iterator().next().getName(),
+                        user.getEmail(),
+                        role,
                         user.isEnable());
 
-                log.info("Login successful for user: {}", username);
+                log.info("Login successful for user: {} with role: {}", username, role);
                 return new AuthResponse(token, "Login successful");
             }
         } catch (Exception e) {

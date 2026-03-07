@@ -10,5 +10,5 @@ import lombok.Setter;
 public class ScheduleDTO {
 	private Long scheduleId;
 	private ClassDTO classId;
-	private UserDTO user;
+	private UserListDTO user;
 }

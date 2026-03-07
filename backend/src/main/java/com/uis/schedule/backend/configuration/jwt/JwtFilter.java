@@ -19,7 +19,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 public class JwtFilter extends OncePerRequestFilter {
     @Autowired
@@ -53,18 +55,21 @@ public class JwtFilter extends OncePerRequestFilter {
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     // Extract role from JWT claims
                     Claims claims = jwtUtil.extractAllClaims(token);
-                    String role = claims.get("role", String.class);
+                    Object roleClaim = claims.get("role");
+                    String role = (roleClaim != null) ? roleClaim.toString() : null;
 
                     // Create authorities list with ROLE_ prefix
                     List<SimpleGrantedAuthority> authorities = new ArrayList<>();
                     if (role != null && !role.isEmpty()) {
-                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+                        // Spring Security hasRole('X') checks for 'ROLE_X'
+                        String authorityName = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+                        authorities.add(new SimpleGrantedAuthority(authorityName));
+                        log.info("Authenticated user {} with role {}", username, authorityName);
                     }
 
-                    // Validate token
+                    // Validate token and user status
                     UserDetails userDetails = customerDetailService.loadUserByUsername(username);
                     if (jwtUtil.validateToken(token, userDetails)) {
-                        // Use authorities from JWT token instead of loading from database
                         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                                 userDetails, null, authorities);
                         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -72,8 +77,10 @@ public class JwtFilter extends OncePerRequestFilter {
                     }
                 }
             } catch (Exception e) {
+                log.error("Authentication error: {}", e.getMessage());
                 response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                response.getWriter().write("Invalid/Expired token");
+                response.setContentType("application/json");
+                response.getWriter().write("{\"token\": null, \"message\": \"Authentication failed: " + e.getMessage() + "\"}");
                 return;
             }
         }
