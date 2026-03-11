@@ -1,6 +1,5 @@
 package com.uis.schedule.backend.presentation.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
