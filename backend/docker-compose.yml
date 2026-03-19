@@ -6,6 +6,10 @@ services:
     container_name: postgres
     env_file:
       - ./.env
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -41,6 +45,7 @@ services:
       - DB_NAME=${POSTGRES_DB}
       - DB_USERNAME=${POSTGRES_USER}
       - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_FLYWAY_BASELINE_ON_MIGRATE=true
     networks:
       - spring-network
     depends_on:
