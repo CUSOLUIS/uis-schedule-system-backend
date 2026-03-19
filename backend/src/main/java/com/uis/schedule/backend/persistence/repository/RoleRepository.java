@@ -25,4 +25,21 @@ public interface RoleRepository extends JpaRepository<RoleEntity, UUID> {
      * @return List of active roles
      */
     List<RoleEntity> findByIsActiveTrue();
+
+    /**
+     * Find all active roles with pagination.
+     * 
+     * @param pageable pagination info
+     * @return Page of active roles
+     */
+    org.springframework.data.domain.Page<RoleEntity> findAllByIsActiveTrue(org.springframework.data.domain.Pageable pageable);
+
+    /**
+     * Find roles by active status with pagination.
+     * 
+     * @param isActive active status
+     * @param pageable pagination info
+     * @return Page of roles by status
+     */
+    org.springframework.data.domain.Page<RoleEntity> findAllByIsActive(boolean isActive, org.springframework.data.domain.Pageable pageable);
 }
