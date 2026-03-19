@@ -24,12 +24,19 @@ public class UserMapper {
 			return null;
 		}
 
+		Set<String> roleNames = entity.getRoles() != null
+				? entity.getRoles().stream()
+						.map(role -> role.getName())
+						.collect(Collectors.toSet())
+				: Collections.emptySet();
+
 		return UserListDTO.builder()
 				.id(entity.getUserId())
 				.firstName(entity.getFirstName())
 				.lastName(entity.getLastName())
 				.username(entity.getUsername())
 				.email(entity.getEmail())
+				.roles(roleNames)
 				.active(entity.isEnable())
 				.build();
 	}
@@ -77,12 +84,19 @@ public class UserMapper {
 			return null;
 		}
 
+		Set<String> roleNames = entity.getRoles() != null
+				? entity.getRoles().stream()
+						.map(role -> role.getName())
+						.collect(Collectors.toSet())
+				: Collections.emptySet();
+
 		return UserResponse.builder()
 				.id(entity.getUserId())
 				.firstName(entity.getFirstName())
 				.lastName(entity.getLastName())
 				.username(entity.getUsername())
 				.email(entity.getEmail())
+				.roles(roleNames)
 				.active(entity.isEnable())
 				.lastSession(entity.getLastSessionDateTime())
 				.build();

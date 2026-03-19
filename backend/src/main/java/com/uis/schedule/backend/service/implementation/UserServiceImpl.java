@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
 import com.uis.schedule.backend.persistence.entity.UserEntity;
+import com.uis.schedule.backend.persistence.entity.RoleEntity;
+import com.uis.schedule.backend.persistence.repository.RoleRepository;
 import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.presentation.dto.*;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
@@ -34,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
@@ -41,10 +44,12 @@ public class UserServiceImpl implements UserService {
     @Autowired
     public UserServiceImpl(
             UserRepository userRepository,
+            RoleRepository roleRepository,
             AuthenticationManager authenticationManager,
             JwtUtil jwtUtil,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
@@ -126,12 +131,22 @@ public class UserServiceImpl implements UserService {
             String username = (request.getFirstName().substring(0, 1) + request.getLastName() + randomInt)
                     .toLowerCase();
 
+            java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+            if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+                request.getRoles().forEach(roleName -> {
+                    roleRepository.findByName(roleName).ifPresent(roles::add);
+                });
+            } else {
+                roleRepository.findByName("USER").ifPresent(roles::add);
+            }
+
             UserEntity entity = UserEntity.builder()
                     .firstName(request.getFirstName())
                     .lastName(request.getLastName())
                     .username(username)
                     .email(email)
                     .password(passwordEncoder.encode(request.getPassword()))
+                    .roles(roles)
                     .isEnable(true)
                     .accountNoExpired(true)
                     .accountNoLocked(true)
@@ -175,6 +190,15 @@ public class UserServiceImpl implements UserService {
 
         try {
             UserMapper.updateEntityFromRequest(userToUpdate, request);
+
+            if (request.getRoles() != null) {
+                java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+                request.getRoles().forEach(roleName -> {
+                    roleRepository.findByName(roleName).ifPresent(roles::add);
+                });
+                userToUpdate.setRoles(roles);
+            }
+
             UserEntity updatedUser = userRepository.save(userToUpdate);
 
             log.info("User updated successfully with ID: {}", id);
@@ -281,19 +305,23 @@ public class UserServiceImpl implements UserService {
                 newUser.setAccountNoLocked(true);
                 newUser.setCredentialNoExpired(true);
 
+                java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+                roleRepository.findByName("USER").ifPresent(roles::add);
+                newUser.setRoles(roles);
+
                 userRepository.save(newUser);
                 log.info("User registered successfully: {}", authSignupRequest.email());
 
                 // No roles assigned yet in this simplified signup, but let's assume default or handle null
-                String role = (newUser.getRoles() != null && !newUser.getRoles().isEmpty())
-                        ? newUser.getRoles().iterator().next().getName()
-                        : "USER"; // No prefix here
+                java.util.Set<String> rolesSet = newUser.getRoles().stream()
+                        .map(RoleEntity::getName)
+                        .collect(Collectors.toSet());
 
                 String token = jwtUtil.generateToken(
                         newUser.getUserId(),
                         newUser.getUsername(),
                         newUser.getEmail(),
-                        role,
+                        rolesSet,
                         newUser.isEnable());
 
                 return new AuthResponse(token, "User registered successfully");
@@ -326,19 +354,18 @@ public class UserServiceImpl implements UserService {
                             return new UserNotFoundException("Authenticated user not found in database: " + username);
                         });
 
-                String role = "USER";
-                if (user.getRoles() != null && !user.getRoles().isEmpty()) {
-                    role = user.getRoles().iterator().next().getName();
-                }
+                java.util.Set<String> rolesSet = user.getRoles().stream()
+                        .map(RoleEntity::getName)
+                        .collect(Collectors.toSet());
 
                 String token = jwtUtil.generateToken(
                         user.getUserId(),
                         user.getUsername(),
                         user.getEmail(),
-                        role,
+                        rolesSet,
                         user.isEnable());
 
-                log.info("Login successful for user: {} with role: {}", username, role);
+                log.info("Login successful for user: {} with roles: {}", username, rolesSet);
                 return new AuthResponse(token, "Login successful");
             }
         } catch (Exception e) {
