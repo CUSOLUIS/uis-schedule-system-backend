@@ -24,12 +24,19 @@ public class UserMapper {
 			return null;
 		}
 
+		Set<String> roleNames = entity.getRoles() != null
+				? entity.getRoles().stream()
+						.map(role -> role.getName())
+						.collect(Collectors.toSet())
+				: Collections.emptySet();
+
 		return UserListDTO.builder()
 				.id(entity.getUserId())
 				.firstName(entity.getFirstName())
 				.lastName(entity.getLastName())
 				.username(entity.getUsername())
 				.email(entity.getEmail())
+				.roles(roleNames)
 				.active(entity.isEnable())
 				.build();
 	}
@@ -77,12 +84,19 @@ public class UserMapper {
 			return null;
 		}
 
+		Set<String> roleNames = entity.getRoles() != null
+				? entity.getRoles().stream()
+						.map(role -> role.getName())
+						.collect(Collectors.toSet())
+				: Collections.emptySet();
+
 		return UserResponse.builder()
 				.id(entity.getUserId())
 				.firstName(entity.getFirstName())
 				.lastName(entity.getLastName())
 				.username(entity.getUsername())
 				.email(entity.getEmail())
+				.roles(roleNames)
 				.active(entity.isEnable())
 				.lastSession(entity.getLastSessionDateTime())
 				.build();
@@ -112,51 +126,5 @@ public class UserMapper {
 		if (request.getActive() != null) {
 			entity.setEnable(request.getActive());
 		}
-	}
-
-	// Legacy methods for backward compatibility with existing code
-
-	/**
-	 * @deprecated Use entityToDetailDTO instead
-	 */
-	@Deprecated
-	public static UserDTO entityToDTO(UserEntity entity) {
-		if (entity == null) {
-			return null;
-		}
-
-		UserDTO dto = new UserDTO();
-		dto.setId(entity.getUserId());
-		dto.setFirstName(entity.getFirstName());
-		dto.setLastName(entity.getLastName());
-		dto.setUsername(entity.getUsername());
-		dto.setEmail(entity.getEmail());
-		dto.setPassword(entity.getPassword());
-		dto.setActive(entity.isEnable());
-		dto.setLastSession(entity.getLastSession());
-		return dto;
-	}
-
-	/**
-	 * @deprecated Use createRequestToEntity instead
-	 */
-	@Deprecated
-	public static UserEntity dtoToEntity(UserDTO dto) {
-		if (dto == null) {
-			return null;
-		}
-
-		UserEntity entity = new UserEntity();
-		entity.setUserId(dto.getId());
-		entity.setFirstName(dto.getFirstName());
-		entity.setLastName(dto.getLastName());
-		entity.setUsername(dto.getUsername());
-		entity.setEmail(dto.getEmail());
-		entity.setPassword(dto.getPassword());
-		entity.setEnable(dto.isActive());
-		if (dto.getLastSession() != null) {
-			entity.setLastSession(dto.getLastSession());
-		}
-		return entity;
 	}
 }

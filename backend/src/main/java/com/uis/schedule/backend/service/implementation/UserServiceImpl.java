@@ -1,8 +1,8 @@
 package com.uis.schedule.backend.service.implementation;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
 import com.uis.schedule.backend.persistence.entity.UserEntity;
+import com.uis.schedule.backend.persistence.entity.RoleEntity;
+import com.uis.schedule.backend.persistence.repository.RoleRepository;
 import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.presentation.dto.*;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
@@ -34,6 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
@@ -41,10 +44,12 @@ public class UserServiceImpl implements UserService {
     @Autowired
     public UserServiceImpl(
             UserRepository userRepository,
+            RoleRepository roleRepository,
             AuthenticationManager authenticationManager,
             JwtUtil jwtUtil,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
@@ -52,33 +57,59 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserListDTO> listUsers() {
+    public PaginatedResponse<UserListDTO> listUsers(int page, int size) {
         try {
-            List<UserEntity> users = userRepository.findAll();
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size);
+            org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAllByIsEnableTrue(pageable);
 
-            if (users.isEmpty()) {
-                log.info("No users found in database");
-                return Collections.emptyList();
-            }
-
-            return users.stream()
-                    .map(UserMapper::entityToListDTO)
-                    .collect(Collectors.toList());
+            return convertToPaginatedResponse(usersPage);
         } catch (Exception e) {
-            log.error("Error retrieving users list", e);
-            return Collections.emptyList();
+            log.error("Error retrieving active users list", e);
+            return new PaginatedResponse<>();
         }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public java.util.Optional<UserDetailDTO> findUserById(Long id) {
+    public PaginatedResponse<UserListDTO> listAllUsersIncludingInactive(int page, int size) {
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size);
+            org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAll(pageable);
+
+            return convertToPaginatedResponse(usersPage);
+        } catch (Exception e) {
+            log.error("Error retrieving all users list", e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    private PaginatedResponse<UserListDTO> convertToPaginatedResponse(
+            org.springframework.data.domain.Page<UserEntity> usersPage) {
+        List<UserListDTO> content = usersPage.getContent().stream()
+                .map(UserMapper::entityToListDTO)
+                .collect(Collectors.toList());
+
+        return PaginatedResponse.<UserListDTO>builder()
+                .content(content)
+                .pageNumber(usersPage.getNumber())
+                .pageSize(usersPage.getSize())
+                .totalElements(usersPage.getTotalElements())
+                .totalPages(usersPage.getTotalPages())
+                .last(usersPage.isLast())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Optional<UserDetailDTO> findUserById(UUID id) {
         if (id == null) {
             log.warn("Attempted to find user with null ID");
             return java.util.Optional.empty();
         }
 
-        return userRepository.findById(id)
+        return userRepository.findByUserIdAndIsEnableTrue(id)
                 .map(UserMapper::entityToDetailDTO);
     }
 
@@ -100,12 +131,22 @@ public class UserServiceImpl implements UserService {
             String username = (request.getFirstName().substring(0, 1) + request.getLastName() + randomInt)
                     .toLowerCase();
 
+            java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+            if (request.getRoles() != null && !request.getRoles().isEmpty()) {
+                request.getRoles().forEach(roleName -> {
+                    roleRepository.findByName(roleName).ifPresent(roles::add);
+                });
+            } else {
+                roleRepository.findByName("USER").ifPresent(roles::add);
+            }
+
             UserEntity entity = UserEntity.builder()
                     .firstName(request.getFirstName())
                     .lastName(request.getLastName())
                     .username(username)
                     .email(email)
                     .password(passwordEncoder.encode(request.getPassword()))
+                    .roles(roles)
                     .isEnable(true)
                     .accountNoExpired(true)
                     .accountNoLocked(true)
@@ -127,7 +168,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserResponse updateUser(Long id, UpdateUserRequest request) {
+    public UserResponse updateUser(UUID id, UpdateUserRequest request) {
         if (id == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
@@ -149,6 +190,15 @@ public class UserServiceImpl implements UserService {
 
         try {
             UserMapper.updateEntityFromRequest(userToUpdate, request);
+
+            if (request.getRoles() != null) {
+                java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+                request.getRoles().forEach(roleName -> {
+                    roleRepository.findByName(roleName).ifPresent(roles::add);
+                });
+                userToUpdate.setRoles(roles);
+            }
+
             UserEntity updatedUser = userRepository.save(userToUpdate);
 
             log.info("User updated successfully with ID: {}", id);
@@ -165,20 +215,67 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void deleteUser(Long id) {
+    @Transactional(readOnly = true)
+    public PaginatedResponse<UserListDTO> findByStatus(boolean status, int page, int size) {
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size);
+            org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAllByIsEnable(status,
+                    pageable);
+            return convertToPaginatedResponse(usersPage);
+        } catch (Exception e) {
+            log.error("Error retrieving users by status: {}", status, e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<UserListDTO> findByRole(String roleName, int page, int size) {
+        try {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
+                    size);
+            org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findByRolesName(roleName,
+                    pageable);
+            return convertToPaginatedResponse(usersPage);
+        } catch (Exception e) {
+            log.error("Error retrieving users by role: {}", roleName, e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    @Override
+    public void deleteUser(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
 
-        log.info("Deleting user with ID: {}", id);
+        log.info("Soft deleting user with ID: {}", id);
 
-        if (!userRepository.existsById(id)) {
-            log.error("User not found with ID: {}", id);
-            throw new UserNotFoundException("User not found with id: " + id);
+        // We use findById here to see if user exists, regardless of current enable status
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("User not found with ID: {}", id);
+                    return new UserNotFoundException("User not found with id: " + id);
+                });
+
+        if (!user.isEnable()) {
+            throw new IllegalArgumentException("User is already disabled (soft-deleted)");
         }
 
-        userRepository.deleteById(id);
-        log.info("User deleted successfully with ID: {}", id);
+        // Protection: An admin cannot delete another admin
+        boolean isTargetAdmin = user.getRoles().stream()
+                .anyMatch(role -> role.getName().equals("ADMINISTRADOR"));
+
+        if (isTargetAdmin) {
+            log.warn("Attempt to delete an ADMINISTRADOR account blocked for ID: {}", id);
+            throw new IllegalStateException("Security protection: Users with ADMINISTRADOR role cannot be deleted.");
+        }
+
+        user.setEnable(false);
+        userRepository.save(user);
+
+        log.info("User soft-deleted successfully with ID: {}", id);
     }
 
     @Override
@@ -208,16 +305,33 @@ public class UserServiceImpl implements UserService {
                 newUser.setAccountNoLocked(true);
                 newUser.setCredentialNoExpired(true);
 
+                java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+                roleRepository.findByName("USER").ifPresent(roles::add);
+                newUser.setRoles(roles);
+
                 userRepository.save(newUser);
                 log.info("User registered successfully: {}", authSignupRequest.email());
-                return new AuthResponse(newUser.getUsername(), "User registered successfully", null, true);
+
+                // No roles assigned yet in this simplified signup, but let's assume default or handle null
+                java.util.Set<String> rolesSet = newUser.getRoles().stream()
+                        .map(RoleEntity::getName)
+                        .collect(Collectors.toSet());
+
+                String token = jwtUtil.generateToken(
+                        newUser.getUserId(),
+                        newUser.getUsername(),
+                        newUser.getEmail(),
+                        rolesSet,
+                        newUser.isEnable());
+
+                return new AuthResponse(token, "User registered successfully");
             } else {
                 log.warn("Email already registered or username taken: {}", authSignupRequest.email());
-                return new AuthResponse(username, "Email already registered or username taken", null, false);
+                return new AuthResponse(null, "Email already registered or username taken");
             }
         } catch (Exception ex) {
             log.error("Error during user signup", ex);
-            return new AuthResponse(null, "Something went wrong", null, false);
+            return new AuthResponse(null, "Something went wrong");
         }
     }
 
@@ -240,19 +354,24 @@ public class UserServiceImpl implements UserService {
                             return new UserNotFoundException("Authenticated user not found in database: " + username);
                         });
 
+                java.util.Set<String> rolesSet = user.getRoles().stream()
+                        .map(RoleEntity::getName)
+                        .collect(Collectors.toSet());
+
                 String token = jwtUtil.generateToken(
                         user.getUserId(),
+                        user.getUsername(),
                         user.getEmail(),
-                        user.getRoles().iterator().next().getName());
+                        rolesSet,
+                        user.isEnable());
 
-                log.info("Login successful for user: {}", username);
-                return new AuthResponse(user.getFirstName() + " " + user.getLastName(), "Login successful", token,
-                        true);
+                log.info("Login successful for user: {} with roles: {}", username, rolesSet);
+                return new AuthResponse(token, "Login successful");
             }
         } catch (Exception e) {
             log.error("Login failed for email: {}", email, e);
         }
 
-        return new AuthResponse(null, "Bad credentials", null, false);
+        return new AuthResponse(null, "Bad credentials");
     }
 }

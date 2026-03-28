@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Set;
+
 /**
  * DTO for creating a new user.
  * Contains validation constraints for user creation.
@@ -32,14 +34,9 @@ public class CreateUserRequest {
     @Size(max = 250, message = "Email must not exceed 250 characters")
     private String email;
 
-        @NotBlank(message = "Password is required")
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 256, message = "Password must be between 8 and 256 characters")
+    private String password;
 
-        @Size(min = 8, max = 256, message = "Password must be between 8 and 256 characters")
-
-        private String password;
-
-    
-
-        
-
-    }
+    private Set<String> roles;
+}

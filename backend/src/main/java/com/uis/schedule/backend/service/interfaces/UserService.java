@@ -2,6 +2,7 @@ package com.uis.schedule.backend.service.interfaces;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import com.uis.schedule.backend.presentation.dto.*;
 
@@ -12,11 +13,43 @@ import com.uis.schedule.backend.presentation.dto.*;
 public interface UserService {
 
 	/**
-	 * Retrieves a list of all users with minimal information.
+	 * Retrieves a list of active users with minimal information and pagination.
 	 * 
-	 * @return List of UserListDTO, empty list if no users exist
+	 * @param page page number (0-indexed)
+	 * @param size number of items per page
+	 * @return PaginatedResponse of UserListDTO
 	 */
-	List<UserListDTO> listUsers();
+	PaginatedResponse<UserListDTO> listUsers(int page, int size);
+
+	/**
+	 * Retrieves all users (including inactive ones) with minimal information and
+	 * pagination.
+	 * 
+	 * @param page page number (0-indexed)
+	 * @param size number of items per page
+	 * @return PaginatedResponse of UserListDTO
+	 */
+	PaginatedResponse<UserListDTO> listAllUsersIncludingInactive(int page, int size);
+
+	/**
+	 * Finds users by their enable status with pagination.
+	 * 
+	 * @param status the status to filter by
+	 * @param page   page number (0-indexed)
+	 * @param size   number of items per page
+	 * @return PaginatedResponse of UserListDTO
+	 */
+	PaginatedResponse<UserListDTO> findByStatus(boolean status, int page, int size);
+
+	/**
+	 * Finds users by their role name with pagination.
+	 * 
+	 * @param roleName the role name to filter by
+	 * @param page     page number (0-indexed)
+	 * @param size     number of items per page
+	 * @return PaginatedResponse of UserListDTO
+	 */
+	PaginatedResponse<UserListDTO> findByRole(String roleName, int page, int size);
 
 	/**
 	 * Finds a user by their ID with complete details.
@@ -24,7 +57,7 @@ public interface UserService {
 	 * @param id the user ID
 	 * @return Optional containing UserDetailDTO if found
 	 */
-	Optional<UserDetailDTO> findUserById(Long id);
+	Optional<UserDetailDTO> findUserById(UUID id);
 
 	/**
 	 * Creates a new user.
@@ -41,14 +74,14 @@ public interface UserService {
 	 * @param request the update user request
 	 * @return UserResponse with updated user data
 	 */
-	UserResponse updateUser(Long id, UpdateUserRequest request);
+	UserResponse updateUser(UUID id, UpdateUserRequest request);
 
 	/**
 	 * Deletes a user by ID.
 	 * 
 	 * @param id the user ID
 	 */
-	void deleteUser(Long id);
+	void deleteUser(UUID id);
 
 	// Authentication methods (kept for backward compatibility)
 

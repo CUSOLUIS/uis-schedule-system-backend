@@ -9,5 +9,5 @@ public class TeacherDTO {
 	private Long teacherId;
 	private String availability;
 	private String department;
-	private UserDTO user;
+	private UserListDTO user;
 }

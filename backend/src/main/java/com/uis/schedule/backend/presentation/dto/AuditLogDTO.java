@@ -14,5 +14,5 @@ public class AuditLogDTO {
 	private String module;
 	private String originIp;
 	private LocalDateTime date;
-	private UserDTO userId;
+	private UserListDTO userId;
 }

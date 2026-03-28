@@ -31,4 +31,6 @@ public class UpdateUserRequest {
     private String email;
 
     private Boolean active;
+
+    private java.util.Set<String> roles;
 }

@@ -37,6 +37,10 @@ public class CustomerDetailService implements UserDetailsService {
         return new org.springframework.security.core.userdetails.User(
                 userEntity.getEmail(),
                 userEntity.getPassword(),
+                userEntity.isEnable(),
+                userEntity.isAccountNoExpired(),
+                userEntity.isCredentialNoExpired(),
+                userEntity.isAccountNoLocked(),
                 authorityList);
     }
 }

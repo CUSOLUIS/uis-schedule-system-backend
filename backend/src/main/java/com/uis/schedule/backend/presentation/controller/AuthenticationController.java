@@ -1,11 +1,11 @@
 package com.uis.schedule.backend.presentation.controller;
 
+import com.uis.schedule.backend.presentation.dto.ApiResponse;
 import com.uis.schedule.backend.presentation.dto.AuthLoginRequest;
 import com.uis.schedule.backend.presentation.dto.AuthResponse;
 import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import org.springframework.http.HttpStatus;
@@ -30,35 +30,26 @@ public class AuthenticationController {
 
     @Operation(summary = "Register a new user", description = "Creates a new user in the system and returns a JWT token upon successful registration.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "User registered successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input or user with the same email already exists"),
-            @ApiResponse(responseCode = "500", description = "Internal server error during registration")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "User registered successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid input or user with the same email already exists"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error during registration")
     })
     @PostMapping("/signup")
-    public ResponseEntity<AuthResponse> signUp(@RequestBody(required = true) AuthSignupRequest authSignupRequest) {
-        try {
-            AuthResponse authResponse = userService.signUp(authSignupRequest);
-            return ResponseEntity.status(HttpStatus.CREATED).body(authResponse);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
+    public ResponseEntity<ApiResponse<AuthResponse>> signUp(@RequestBody(required = true) AuthSignupRequest authSignupRequest) {
+        AuthResponse authResponse = userService.signUp(authSignupRequest);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(authResponse, "User registered successfully"));
     }
 
     @Operation(summary = "Authenticate a user", description = "Logs in a user with email/username and password, and returns a JWT token.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Login successful"),
-            @ApiResponse(responseCode = "400", description = "Bad credentials"),
-            @ApiResponse(responseCode = "404", description = "User not found")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad credentials"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found")
     })
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody(required = true) AuthLoginRequest authLoginRequest) {
-        try {
-            AuthResponse authResponse = userService.login(authLoginRequest.usernameOrEmail(), authLoginRequest.password());
-            return ResponseEntity.ok(authResponse);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new AuthResponse(null, "Something went wrong", null, false));
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody(required = true) AuthLoginRequest authLoginRequest) {
+        AuthResponse authResponse = userService.login(authLoginRequest.usernameOrEmail(), authLoginRequest.password());
+        return ResponseEntity.ok(ApiResponse.success(authResponse, "Login successful"));
     }
 }

@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Set;
+import java.util.UUID;
+
 /**
  * DTO for listing users with minimal information.
  * Used in tables and list views in the frontend.
@@ -14,10 +17,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserListDTO {
-    private Long id;
+    private UUID id;
     private String firstName;
     private String lastName;
     private String username;
     private String email;
+    private Set<String> roles;
     private boolean active;
 }

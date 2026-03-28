@@ -1,6 +1,6 @@
 package com.uis.schedule.backend.presentation.controller;
 
-import java.util.List;
+import java.util.UUID;
 
 import jakarta.validation.Valid;
 
@@ -10,11 +10,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.uis.schedule.backend.presentation.dto.*;
-import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,85 +33,125 @@ public class UserController {
 		this.userService = userService;
 	}
 
-	@Operation(summary = "List all users", description = "Retrieves a list of all registered users with minimal information. Requires ADMIN role. Returns empty list if no users exist.")
+	@Operation(summary = "List active users with pagination", description = "Retrieves a paginated list of active users. Requires authentication.")
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Successfully retrieved the list of users (may be empty)"),
-			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMIN role")
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of active users"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User not authenticated"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
 	})
 	@GetMapping
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<List<UserListDTO>> listAll() {
-		List<UserListDTO> users = userService.listUsers();
-		return ResponseEntity.ok(users);
+	public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> listAll(
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		PaginatedResponse<UserListDTO> users = userService.listUsers(page, size);
+		return ResponseEntity.ok(ApiResponse.success(users, "Active users retrieved successfully"));
+	}
+
+	@Operation(summary = "List all users including inactive with pagination", description = "Retrieves a paginated list of all users, including those that are inactive. Requires ADMINISTRADOR role.")
+	@ApiResponses(value = {
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of all users"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRADOR role"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+	})
+	@GetMapping("/all")
+	@PreAuthorize("hasRole('ADMINISTRADOR')")
+	public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> listAllWithInactive(
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		PaginatedResponse<UserListDTO> users = userService.listAllUsersIncludingInactive(page, size);
+		return ResponseEntity.ok(ApiResponse.success(users, "All users retrieved successfully"));
+	}
+
+	@Operation(summary = "Get users by status", description = "Retrieves a paginated list of users filtered by their enable status. Requires ADMINISTRADOR role.")
+	@ApiResponses(value = {
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of users by status"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRADOR role"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+	})
+	@GetMapping("/status/{status}")
+	@PreAuthorize("hasRole('ADMINISTRADOR')")
+	public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> getByStatus(
+			@PathVariable boolean status,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		PaginatedResponse<UserListDTO> users = userService.findByStatus(status, page, size);
+		return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully by status"));
+	}
+
+	@Operation(summary = "Get users by role", description = "Retrieves a paginated list of users filtered by their role name. Requires ADMINISTRADOR role.")
+	@ApiResponses(value = {
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of users by role"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRADOR role"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+	})
+	@GetMapping("/role/{roleName}")
+	@PreAuthorize("hasRole('ADMINISTRADOR')")
+	public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> getByRole(
+			@PathVariable String roleName,
+			@RequestParam(defaultValue = "0") int page,
+			@RequestParam(defaultValue = "10") int size) {
+		PaginatedResponse<UserListDTO> users = userService.findByRole(roleName, page, size);
+		return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully by role"));
 	}
 
 	@Operation(summary = "Get user by ID", description = "Retrieves detailed information of a single user by their ID.")
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "Successfully retrieved the user"),
-			@ApiResponse(responseCode = "404", description = "User not found with the specified ID")
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the user"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found with the specified ID"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
 	})
 	@GetMapping("/{id}")
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<UserDetailDTO> getUserById(@PathVariable Long id) {
-		return userService.findUserById(id)
-				.map(ResponseEntity::ok)
-				.orElse(ResponseEntity.notFound().build());
+	public ResponseEntity<ApiResponse<UserDetailDTO>> getUserById(@PathVariable UUID id) {
+		UserDetailDTO user = userService.findUserById(id)
+				.orElseThrow(() -> new com.uis.schedule.backend.service.exception.UserNotFoundException("User not found with ID: " + id));
+		return ResponseEntity.ok(ApiResponse.success(user, "User retrieved successfully"));
 	}
 
 	@Operation(summary = "Create a new user", description = "Creates a new user in the system. Validates input data.")
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "201", description = "User created successfully"),
-			@ApiResponse(responseCode = "400", description = "Invalid user data or email already in use"),
-			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions")
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "User created successfully"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid user data or email already in use"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
 	})
 	@PostMapping
 	@PreAuthorize("hasRole('ADMINISTRADOR')")
-	public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
-		try {
-			UserResponse createdUser = userService.createUser(request);
-			return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
-		} catch (IllegalArgumentException e) {
-			return ResponseEntity.badRequest().build();
-		}
+	public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
+		UserResponse createdUser = userService.createUser(request);
+		return ResponseEntity.status(HttpStatus.CREATED)
+				.body(ApiResponse.success(createdUser, "User created successfully"));
 	}
 
 	@Operation(summary = "Update an existing user", description = "Updates an existing user's details by their ID. Only provided fields will be updated.")
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "200", description = "User updated successfully"),
-			@ApiResponse(responseCode = "400", description = "Invalid user data or email already in use"),
-			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
-			@ApiResponse(responseCode = "404", description = "User not found with the specified ID")
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User updated successfully"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid user data or email already in use"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found with the specified ID"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
 	})
 	@PutMapping("/{id}")
 	@PreAuthorize("hasRole('ADMINISTRADOR')")
-	public ResponseEntity<UserResponse> updateUser(
-			@PathVariable Long id,
+	public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+			@PathVariable UUID id,
 			@Valid @RequestBody UpdateUserRequest request) {
-		try {
-			UserResponse updatedUser = userService.updateUser(id, request);
-			return ResponseEntity.ok(updatedUser);
-		} catch (UserNotFoundException e) {
-			return ResponseEntity.notFound().build();
-		} catch (IllegalArgumentException e) {
-			return ResponseEntity.badRequest().build();
-		}
+		UserResponse updatedUser = userService.updateUser(id, request);
+		return ResponseEntity.ok(ApiResponse.success(updatedUser, "User updated successfully"));
 	}
 
 	@Operation(summary = "Delete a user by ID", description = "Deletes a user from the system by their ID.")
 	@ApiResponses(value = {
-			@ApiResponse(responseCode = "204", description = "User deleted successfully"),
-			@ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
-			@ApiResponse(responseCode = "404", description = "User not found with the specified ID")
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User deleted successfully"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found with the specified ID"),
+			@io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
 	})
 	@DeleteMapping("/{id}")
 	@PreAuthorize("hasRole('ADMINISTRADOR')")
-	public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-		try {
-			userService.deleteUser(id);
-			return ResponseEntity.noContent().build();
-		} catch (UserNotFoundException e) {
-			System.err.println(e.getMessage());
-			return ResponseEntity.notFound().build();
-		}
+	public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
+		userService.deleteUser(id);
+		return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully (soft delete)"));
 	}
 }
