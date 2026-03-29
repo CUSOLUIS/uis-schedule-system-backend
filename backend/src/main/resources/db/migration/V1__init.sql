@@ -1,8 +1,3 @@
--- =========================================================
--- CUSOL - DDL PostgreSQL
--- Esquema generado a partir del dump proporcionado
--- Compatible con PostgreSQL 16+
--- =========================================================
 
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
