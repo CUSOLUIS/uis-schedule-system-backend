@@ -53,21 +53,19 @@ public class JwtFilter extends OncePerRequestFilter {
                 username = jwtUtil.extractUserName(token);
 
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Extract role from JWT claims
                     Claims claims = jwtUtil.extractAllClaims(token);
-                    Object roleClaim = claims.get("role");
-                    String role = (roleClaim != null) ? roleClaim.toString() : null;
 
-                    // Create authorities list with ROLE_ prefix
+                    // Lee los roles como lista desde el JWT
                     List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-                    if (role != null && !role.isEmpty()) {
-                        // Spring Security hasRole('X') checks for 'ROLE_X'
-                        String authorityName = role.startsWith("ROLE_") ? role : "ROLE_" + role;
-                        authorities.add(new SimpleGrantedAuthority(authorityName));
-                        log.info("Authenticated user {} with role {}", username, authorityName);
+                    Object rolesClaim = claims.get("roles");
+                    if (rolesClaim instanceof List<?> rolesList) {
+                        for (Object r : rolesList) {
+                            String authorityName = r.toString().startsWith("ROLE_") ? r.toString() : "ROLE_" + r.toString();
+                            authorities.add(new SimpleGrantedAuthority(authorityName));
+                        }
+                        log.info("Authenticated user {} with roles {}", username, authorities);
                     }
 
-                    // Validate token and user status
                     UserDetails userDetails = customerDetailService.loadUserByUsername(username);
                     if (jwtUtil.validateToken(token, userDetails)) {
                         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -106,6 +104,4 @@ public class JwtFilter extends OncePerRequestFilter {
         }
         return null;
     }
-
-
 }
