@@ -40,7 +40,7 @@ public class UserController {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @GetMapping
-  @PreAuthorize("isAuthenticated()")
+  @PreAuthorize("hasRole('ADMINISTRADOR')")
   public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> listAll(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size,
