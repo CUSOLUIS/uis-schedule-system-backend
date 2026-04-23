@@ -25,4 +25,9 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
     Page<UserEntity> findAll(Pageable pageable);
 
     Optional<UserEntity> findByUserIdAndIsEnableTrue(UUID userId);
+        // Verifica si ya existe un usuario con ese username
+    boolean existsByUsername(String username);
+
+    // Verifica si ya existe un usuario con ese email
+    boolean existsByEmail(String email);
 }
