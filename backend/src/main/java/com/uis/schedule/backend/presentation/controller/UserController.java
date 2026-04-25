@@ -33,9 +33,9 @@ public class UserController {
     this.userService = userService;
   }
 
-  @Operation(summary = "List users with pagination.", description = "Retrieves a paginated list of users. Requires authentication. Optionally filter by active or inactive.")
+  @Operation(summary = "List users with pagination.", description = "Retrieves a paginated list of users. Requires authentication. Optionally filter by enabled and role.")
   @ApiResponses(value = {
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of active users"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of users"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User not authenticated"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
@@ -44,13 +44,9 @@ public class UserController {
   public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> listAll(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size,
-      @RequestParam(required = false) Boolean active) {
-    PaginatedResponse<UserListDTO> users;
-    if (active == null) {
-      users = userService.listAllUsers(page, size);
-    } else {
-      users = userService.listAllUsersByActive(page, size, active);
-    }
+      @RequestParam(required = false) Boolean enabled,
+      @RequestParam(required = false) String role) {
+    PaginatedResponse<UserListDTO> users = userService.listUsers(page, size, enabled, role);
     return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
   }
 
