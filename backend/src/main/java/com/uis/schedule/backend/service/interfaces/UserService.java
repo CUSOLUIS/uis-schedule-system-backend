@@ -12,24 +12,15 @@ import com.uis.schedule.backend.presentation.dto.*;
 public interface UserService {
 
   /**
-   * Retrieves a list of users inactive or active with minimal information and
-   * pagination.
-   * 
-   * @param page   page number (0-indexed)
-   * @param size   number of items per page
-   * @param active filter by active or inactive users
-   * @return PaginatedResponse of UserListDTO
-   */
-  PaginatedResponse<UserListDTO> listAllUsersByActive(int page, int size, boolean active);
-
-  /**
    * Retrieves a list of users with minimal information and pagination.
    * 
    * @param page page number (0-indexed)
    * @param size number of items per page
+   * @param enabled filter if user is enabled or not
+   * @param role filter by role
    * @return PaginatedResponse of UserListDTO
    */
-  PaginatedResponse<UserListDTO> listAllUsers(int page, int size);
+  PaginatedResponse<UserListDTO> listUsers(int page, int size, Boolean enabled, String role);
 
   /**
    * Finds users by their enable status with pagination.

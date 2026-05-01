@@ -4,12 +4,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
 import com.uis.schedule.backend.persistence.entity.UserEntity;
 
 import java.util.Optional;
 import java.util.UUID;
 
-public interface UserRepository extends JpaRepository<UserEntity, UUID> {
+public interface UserRepository extends JpaRepository<UserEntity, UUID>, JpaSpecificationExecutor<UserEntity> {
 
   @EntityGraph(attributePaths = { "roles" })
   Optional<UserEntity> findUserEntityByEmailOrUsername(String email, String username);

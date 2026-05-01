@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -24,6 +25,8 @@ import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.UserService;
 import com.uis.schedule.backend.util.mapper.UserMapper;
 
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -57,26 +60,25 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional(readOnly = true)
-  public PaginatedResponse<UserListDTO> listAllUsersByActive(int page, int size, boolean active) {
+  public PaginatedResponse<UserListDTO> listUsers(int page, int size, Boolean isEnabled, String role) {
     try {
       org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
           size);
-      org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAllByIsEnable(active, pageable);
 
-      return convertToPaginatedResponse(usersPage);
-    } catch (Exception e) {
-      log.error("Error retrieving all users list", e);
-      return new PaginatedResponse<>();
-    }
-  }
+      Specification<UserEntity> spec = Specification.where(null);
 
-  @Override
-  @Transactional(readOnly = true)
-  public PaginatedResponse<UserListDTO> listAllUsers(int page, int size) {
-    try {
-      org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
-          size);
-      org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAll(pageable);
+      if (isEnabled != null) {
+        spec = spec.and((root, query, cb) -> cb.equal(root.get("isEnabled"), isEnabled));
+      }
+
+      if (role != null && !role.isBlank()) {
+        spec = spec.and((root, query, cb) -> {
+          Join<UserEntity, RoleEntity> roles = root.join("roles", JoinType.INNER);
+          return cb.equal(roles.get("name"), role);
+        });
+      }
+
+      org.springframework.data.domain.Page<UserEntity> usersPage = userRepository.findAll(spec, pageable);
 
       return convertToPaginatedResponse(usersPage);
     } catch (Exception e) {
