@@ -3,7 +3,14 @@ package com.uis.schedule.backend.service.interfaces;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.uis.schedule.backend.presentation.dto.*;
+import com.uis.schedule.backend.presentation.dto.AuthResponse;
+import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
+import com.uis.schedule.backend.presentation.dto.CreateUserRequest;
+import com.uis.schedule.backend.presentation.dto.PaginatedResponse;
+import com.uis.schedule.backend.presentation.dto.UpdateUserRequest;
+import com.uis.schedule.backend.presentation.dto.UserDetailDTO;
+import com.uis.schedule.backend.presentation.dto.UserListDTO;
+import com.uis.schedule.backend.presentation.dto.UserResponse;
 
 /**
  * Service interface for user management operations.
@@ -12,8 +19,19 @@ import com.uis.schedule.backend.presentation.dto.*;
 public interface UserService {
 
   /**
+   * Retrieves a list of users inactive or active with minimal information and
+   * pagination.
+   *
+   * @param page   page number (0-indexed)
+   * @param size   number of items per page
+   * @param active filter by active or inactive users
+   * @return PaginatedResponse of UserListDTO
+   */
+  PaginatedResponse<UserListDTO> listAllUsersByActive(int page, int size, boolean active);
+
+  /**
    * Retrieves a list of users with minimal information and pagination.
-   * 
+   *
    * @param page page number (0-indexed)
    * @param size number of items per page
    * @param enabled filter if user is enabled or not
@@ -24,7 +42,7 @@ public interface UserService {
 
   /**
    * Finds users by their enable status with pagination.
-   * 
+   *
    * @param status the status to filter by
    * @param page   page number (0-indexed)
    * @param size   number of items per page
@@ -34,7 +52,7 @@ public interface UserService {
 
   /**
    * Finds users by their role name with pagination.
-   * 
+   *
    * @param roleName the role name to filter by
    * @param page     page number (0-indexed)
    * @param size     number of items per page
@@ -44,7 +62,7 @@ public interface UserService {
 
   /**
    * Finds a user by their ID with complete details.
-   * 
+   *
    * @param id the user ID
    * @return Optional containing UserDetailDTO if found
    */
@@ -52,7 +70,7 @@ public interface UserService {
 
   /**
    * Creates a new user.
-   * 
+   *
    * @param request the create user request
    * @return UserResponse with created user data
    */
@@ -60,7 +78,7 @@ public interface UserService {
 
   /**
    * Updates an existing user.
-   * 
+   *
    * @param id      the user ID
    * @param request the update user request
    * @return UserResponse with updated user data
@@ -69,7 +87,7 @@ public interface UserService {
 
   /**
    * Deletes a user by ID.
-   * 
+   *
    * @param id the user ID
    */
   void deleteUser(UUID id);
@@ -78,7 +96,7 @@ public interface UserService {
 
   /**
    * Registers a new user.
-   * 
+   *
    * @param authSignupRequest the signup request
    * @return AuthResponse with registration result
    */
@@ -86,10 +104,34 @@ public interface UserService {
 
   /**
    * Authenticates a user.
-   * 
+   *
    * @param email    the user email
    * @param password the user password
    * @return AuthResponse with authentication result
    */
   AuthResponse login(String email, String password);
+
+  /**
+   * Solicita la recuperación de contraseña para un correo.
+   *
+   * @param email correo del usuario
+   */
+  void requestPasswordReset(String email);
+
+  /**
+   * Restablece la contraseña usando un token válido.
+   *
+   * @param token       token de recuperación
+   * @param newPassword nueva contraseña
+   */
+  void resetPassword(String token, String newPassword);
+
+  /**
+   * Cambia la contraseña de un usuario autenticado.
+   *
+   * @param usernameOrEmail identificador del usuario autenticado
+   * @param currentPassword contraseña actual
+   * @param newPassword     nueva contraseña
+   */
+  void changePassword(String usernameOrEmail, String currentPassword, String newPassword);
 }
