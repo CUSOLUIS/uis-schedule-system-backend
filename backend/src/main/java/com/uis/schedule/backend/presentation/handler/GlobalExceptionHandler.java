@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.presentation.handler;
 
 import com.uis.schedule.backend.presentation.dto.ApiResponse;
+import com.uis.schedule.backend.service.exception.ClassroomNotFoundException;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,13 @@ import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  @ExceptionHandler(ClassroomNotFoundException.class)
+  public ResponseEntity<ApiResponse<Object>> handleClassroomNotFoundException(ClassroomNotFoundException ex) {
+    return new ResponseEntity<>(
+        ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
+        HttpStatus.NOT_FOUND);
+  }
 
   @ExceptionHandler(UserNotFoundException.class)
   public ResponseEntity<ApiResponse<Object>> handleUserNotFoundException(UserNotFoundException ex) {
