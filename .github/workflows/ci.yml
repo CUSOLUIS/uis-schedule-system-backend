@@ -1,0 +1,24 @@
+name: CI Backend
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest # este SÍ puede ser un runner de GitHub, no hace falta que sea tu Pi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Ejecutar tests
+        run: mvn test -Dmaven.compiler.release=17
