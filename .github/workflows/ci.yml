@@ -1,0 +1,26 @@
+name: CI Backend
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Ejecutar tests
+        working-directory: ./backend
+        run: mvn test -Dmaven.compiler.release=17
