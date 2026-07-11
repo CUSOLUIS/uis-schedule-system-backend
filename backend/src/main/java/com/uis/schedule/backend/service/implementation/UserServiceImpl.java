@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -57,6 +58,7 @@ public class UserServiceImpl implements UserService {
   private final PasswordResetTokenRepository passwordResetTokenRepository;
   private final TokenGenerator tokenGenerator;
   private final EmailService emailService;
+  private final UserService self;
 
   @org.springframework.beans.factory.annotation.Value("${app.password-reset.expiration-hours:2}")
   private int passwordResetExpirationHours;
@@ -70,7 +72,8 @@ public class UserServiceImpl implements UserService {
       PasswordEncoder passwordEncoder,
       PasswordResetTokenRepository passwordResetTokenRepository,
       TokenGenerator tokenGenerator,
-      EmailService emailService) {
+      EmailService emailService,
+      @Lazy UserService self) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
     this.authenticationManager = authenticationManager;
@@ -79,6 +82,7 @@ public class UserServiceImpl implements UserService {
     this.passwordResetTokenRepository = passwordResetTokenRepository;
     this.tokenGenerator = tokenGenerator;
     this.emailService = emailService;
+    this.self = self;
   }
 
   @Override
@@ -252,6 +256,12 @@ public class UserServiceImpl implements UserService {
       log.error("Error retrieving users by status: {}", status, e);
       return new PaginatedResponse<>();
     }
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public PaginatedResponse<UserListDTO> listAllUsersByActive(int page, int size, boolean active) {
+    return self.findByStatus(active, page, size);
   }
 
   @Override

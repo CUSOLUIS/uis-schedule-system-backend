@@ -15,6 +15,13 @@ jobs:
         working-directory: ./backend
         run: mvn compile -Dmaven.compiler.release=17 -q
 
+      - name: Actualizar código en carpeta de despliegue
+        working-directory: /home/dev/proyects/uis-schedule-system-backend
+        run: |
+          git fetch origin ${{ github.sha }}
+          git reset --hard ${{ github.sha }}
+          git clean -fd
+
       - name: Rebuild y reinicio del contenedor
         working-directory: /home/dev/proyects
         run: |
