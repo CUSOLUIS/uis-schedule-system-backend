@@ -21,6 +21,10 @@ jobs:
           cache: maven
           cache-dependency-path: backend/pom.xml
 
+      - name: Compilar con Maven
+        working-directory: ./backend
+        run: mvn compile -Dmaven.compiler.release=17 -q
+
       - name: Ejecutar tests
         working-directory: ./backend
         run: mvn test -Dmaven.compiler.release=17
