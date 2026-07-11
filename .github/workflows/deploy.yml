@@ -6,12 +6,13 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted, backend-pi]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Compilar con Maven
+        working-directory: ./backend
         run: mvn compile -Dmaven.compiler.release=17 -q
 
       - name: Rebuild y reinicio del contenedor
