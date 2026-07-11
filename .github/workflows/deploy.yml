@@ -6,7 +6,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, backend-pi]
+    runs-on: self-hosted
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,4 +20,4 @@ jobs:
           docker-compose stop backend-spring-api
           docker-compose rm -f backend-spring-api
           docker-compose build --no-cache backend-spring-api
-          docker-compose up -d backend-spring-apideploy
+          docker-compose up -d --no-deps backend-spring-api
