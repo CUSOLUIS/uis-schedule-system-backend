@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ClassroomListDTO {
-    private Long classroomId;
+    private Long id;
     private String number;
     private Integer maxCapacity;
     private String building;

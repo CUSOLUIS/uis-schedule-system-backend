@@ -20,7 +20,7 @@ public class ClassroomMapper {
         }
 
         return ClassroomListDTO.builder()
-                .classroomId(entity.getClassroomId())
+                .id(entity.getClassroomId())
                 .number(entity.getNumber())
                 .maxCapacity(entity.getMaxCapacity())
                 .building(entity.getBuilding())
@@ -36,7 +36,7 @@ public class ClassroomMapper {
         }
 
         return ClassroomDetailDTO.builder()
-                .classroomId(entity.getClassroomId())
+                .id(entity.getClassroomId())
                 .number(entity.getNumber())
                 .maxCapacity(entity.getMaxCapacity())
                 .building(entity.getBuilding())
@@ -52,7 +52,7 @@ public class ClassroomMapper {
         }
 
         return ClassroomResponse.builder()
-                .classroomId(entity.getClassroomId())
+                .id(entity.getClassroomId())
                 .number(entity.getNumber())
                 .maxCapacity(entity.getMaxCapacity())
                 .building(entity.getBuilding())

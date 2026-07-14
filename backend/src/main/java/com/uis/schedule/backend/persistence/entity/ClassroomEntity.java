@@ -20,7 +20,7 @@ public class ClassroomEntity {
     @Column(name = "number", nullable = false)
     private String number;
 
-    @Column(name = "max_capacity", nullable = false)
+    @Column(name = "max_capacity")
     private Integer maxCapacity;
 
     @Column(length = 256)

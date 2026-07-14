@@ -155,9 +155,6 @@ public class ClassroomServiceImpl implements ClassroomService {
             log.info("Classroom updated successfully with ID: {}", id);
             return ClassroomMapper.entityToResponse(updatedClassroom);
 
-        } catch (DataIntegrityViolationException e) {
-            log.error("Data integrity violation while updating classroom: {}", id, e);
-            throw new IllegalArgumentException("Classroom update failed: The classroom number '" + request.getNumber() + "' may already be in use.");
         } catch (Exception e) {
             log.error("Unexpected error while updating classroom: {}", id, e);
             throw new RuntimeException("Failed to update classroom", e);
