@@ -5,7 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * Response DTO returned after creating or updating a class hour.
@@ -20,6 +22,8 @@ public class ClassHourResponse {
     private LocalTime endTime;
     private Long groupId;
     private Long classroomId;
-    private Long dayId;
+    private List<Long> dayIds;
+    private LocalDate startDate;
+    private LocalDate endDate;
     private boolean isActive;
 }

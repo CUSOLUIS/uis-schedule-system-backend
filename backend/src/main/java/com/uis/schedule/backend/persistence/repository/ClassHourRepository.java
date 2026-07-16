@@ -22,19 +22,21 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, Long
 
     /**
      * Find active class hours that overlap with the given time range
-     * on a specific day, in a specific classroom, excluding a given class hour ID.
+     * on any of the specified days, in a specific classroom,
+     * excluding a given class hour ID.
      * <p>
      * Overlap condition: existing.startTime < newEndTime AND existing.endTime > newStartTime
      */
     @Query("SELECT ch FROM ClassHourEntity ch " +
-           "WHERE ch.day.dayId = :dayId " +
+           "JOIN ch.days d " +
+           "WHERE d.dayId IN :dayIds " +
            "AND ch.classroomId.classroomId = :classroomId " +
            "AND ch.isActive = true " +
            "AND ch.classHourId <> :excludeId " +
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime")
     List<ClassHourEntity> findOverlappingHours(
-            @Param("dayId") Long dayId,
+            @Param("dayIds") List<Long> dayIds,
             @Param("classroomId") Long classroomId,
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime,
@@ -43,17 +45,18 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, Long
 
     /**
      * Find active class hours that overlap with the given time range
-     * on a specific day, in a specific classroom.
+     * on any of the specified days, in a specific classroom.
      * Used for creating new class hours (no ID to exclude).
      */
     @Query("SELECT ch FROM ClassHourEntity ch " +
-           "WHERE ch.day.dayId = :dayId " +
+           "JOIN ch.days d " +
+           "WHERE d.dayId IN :dayIds " +
            "AND ch.classroomId.classroomId = :classroomId " +
            "AND ch.isActive = true " +
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime")
     List<ClassHourEntity> findOverlappingHoursForCreate(
-            @Param("dayId") Long dayId,
+            @Param("dayIds") List<Long> dayIds,
             @Param("classroomId") Long classroomId,
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime

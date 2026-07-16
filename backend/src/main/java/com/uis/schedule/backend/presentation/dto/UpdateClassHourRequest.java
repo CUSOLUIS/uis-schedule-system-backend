@@ -5,7 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 /**
  * Request DTO for updating an existing class hour.
@@ -21,9 +23,13 @@ public class UpdateClassHourRequest {
 
     private Long classroomId;
 
-    private Long dayId;
+    private List<Long> dayIds;
 
     private LocalTime startTime;
 
     private LocalTime endTime;
+
+    private LocalDate startDate;
+
+    private LocalDate endDate;
 }

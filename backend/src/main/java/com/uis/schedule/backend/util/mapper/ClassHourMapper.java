@@ -4,6 +4,10 @@ import com.uis.schedule.backend.persistence.entity.ClassHourEntity;
 import com.uis.schedule.backend.presentation.dto.*;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Utility class for mapping between ClassHour entities and DTOs.
  */
@@ -12,6 +16,19 @@ public class ClassHourMapper {
 
     private ClassHourMapper() {
         // Utility class should not be instantiated
+    }
+
+    /**
+     * Extracts a sorted list of day IDs from the entity's days set.
+     */
+    private static List<Long> extractDayIds(ClassHourEntity entity) {
+        if (entity.getDays() == null) {
+            return new ArrayList<>();
+        }
+        return entity.getDays().stream()
+                .map(day -> day.getDayId())
+                .sorted()
+                .collect(Collectors.toList());
     }
 
     public static ClassHourListDTO entityToListDTO(ClassHourEntity entity) {
@@ -25,7 +42,9 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
-                .dayId(entity.getDay() != null ? entity.getDay().getDayId() : null)
+                .dayIds(extractDayIds(entity))
+                .startDate(entity.getStartDate())
+                .endDate(entity.getEndDate())
                 .isActive(entity.isActive())
                 .build();
     }
@@ -41,7 +60,9 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
-                .dayId(entity.getDay() != null ? entity.getDay().getDayId() : null)
+                .dayIds(extractDayIds(entity))
+                .startDate(entity.getStartDate())
+                .endDate(entity.getEndDate())
                 .isActive(entity.isActive())
                 .build();
     }
@@ -57,7 +78,9 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
-                .dayId(entity.getDay() != null ? entity.getDay().getDayId() : null)
+                .dayIds(extractDayIds(entity))
+                .startDate(entity.getStartDate())
+                .endDate(entity.getEndDate())
                 .isActive(entity.isActive())
                 .build();
     }
@@ -72,6 +95,12 @@ public class ClassHourMapper {
         }
         if (request.getEndTime() != null) {
             entity.setEndTime(request.getEndTime());
+        }
+        if (request.getStartDate() != null) {
+            entity.setStartDate(request.getStartDate());
+        }
+        if (request.getEndDate() != null) {
+            entity.setEndDate(request.getEndDate());
         }
     }
 }

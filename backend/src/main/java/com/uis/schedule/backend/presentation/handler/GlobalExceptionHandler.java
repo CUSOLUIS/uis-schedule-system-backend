@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.Collections;
 import java.util.List;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.LocalDateTime;
+
 /**
  * Centralized exception handler for all controllers.
  * Every exception is converted to a consistent {@link ApiResponse} envelope.
@@ -91,10 +95,15 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Object>> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
         String detail = "Invalid request body format";
         if (ex.getCause() instanceof InvalidFormatException ife) {
-            detail = "Invalid value for field: " + ife.getPath().stream()
+            String fieldPath = ife.getPath().stream()
                     .map(ref -> ref.getFieldName() != null ? ref.getFieldName() : String.valueOf(ref.getIndex()))
                     .reduce((a, b) -> a + "." + b)
                     .orElse("unknown");
+
+            // Detect the target type to suggest the expected format
+            Class<?> targetType = ife.getTargetType();
+            String formatHint = getFormatHint(targetType);
+            detail = "Invalid value for field '" + fieldPath + "'" + formatHint;
         }
         return build(HttpStatus.BAD_REQUEST, detail);
     }
@@ -119,5 +128,24 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(
                 ApiResponse.error(message, Collections.singletonList(message)),
                 status);
+    }
+
+    /**
+     * Returns a human-readable hint about the expected format for a given target type.
+     */
+    private String getFormatHint(Class<?> targetType) {
+        if (targetType == null) {
+            return ".";
+        }
+        if (targetType == LocalTime.class) {
+            return ". Expected format: HH:mm:ss (e.g. \"08:00:00\").";
+        }
+        if (targetType == LocalDate.class) {
+            return ". Expected format: yyyy-MM-dd (e.g. \"2026-07-16\").";
+        }
+        if (targetType == LocalDateTime.class) {
+            return ". Expected format: yyyy-MM-ddTHH:mm:ss (e.g. \"2026-07-16T08:00:00\").";
+        }
+        return ".";
     }
 }
