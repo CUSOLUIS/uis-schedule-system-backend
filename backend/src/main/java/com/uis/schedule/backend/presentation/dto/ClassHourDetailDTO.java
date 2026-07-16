@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Detailed DTO for retrieving a specific class hour.
@@ -17,12 +18,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ClassHourDetailDTO {
-    private Long id;
+    private UUID id;
     private LocalTime startTime;
     private LocalTime endTime;
-    private Long groupId;
-    private Long classroomId;
-    private List<Long> dayIds;
+    private UUID groupId;
+    private UUID classroomId;
+    private List<String> dayNames;
     private LocalDate startDate;
     private LocalDate endDate;
     private boolean isActive;

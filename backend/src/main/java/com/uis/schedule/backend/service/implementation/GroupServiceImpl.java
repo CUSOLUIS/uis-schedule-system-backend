@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -93,7 +94,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<GroupDetailDTO> findGroupById(Long id) {
+    public Optional<GroupDetailDTO> findGroupById(UUID id) {
         if (id == null) {
             log.warn("Attempted to find group with null ID");
             return Optional.empty();
@@ -146,7 +147,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    public GroupResponse updateGroup(Long id, UpdateGroupRequest request) {
+    public GroupResponse updateGroup(UUID id, UpdateGroupRequest request) {
         if (id == null) {
             throw new IllegalArgumentException("Group ID cannot be null");
         }
@@ -202,7 +203,7 @@ public class GroupServiceImpl implements GroupService {
     }
 
     @Override
-    public void deleteGroup(Long id) {
+    public void deleteGroup(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("Group ID cannot be null");
         }
@@ -242,7 +243,7 @@ public class GroupServiceImpl implements GroupService {
     /**
      * Resolves optional FK relations (teacher, period, subject) from their IDs.
      */
-    private void resolveOptionalRelations(GroupEntity entity, Long teacherId, Long periodId, Long subjectId) {
+    private void resolveOptionalRelations(GroupEntity entity, UUID teacherId, UUID periodId, UUID subjectId) {
         // Teacher resolution would require TeacherRepository injection — kept simple for now
         // These optional relations can be resolved when their CRUDs are implemented
         // For now, we leave them null if no repository is available

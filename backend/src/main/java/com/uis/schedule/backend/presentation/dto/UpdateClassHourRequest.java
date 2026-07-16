@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Request DTO for updating an existing class hour.
@@ -19,11 +20,11 @@ import java.util.List;
 @AllArgsConstructor
 public class UpdateClassHourRequest {
 
-    private Long groupId;
+    private UUID groupId;
 
-    private Long classroomId;
+    private UUID classroomId;
 
-    private List<Long> dayIds;
+    private List<UUID> dayIds;
 
     private LocalTime startTime;
 

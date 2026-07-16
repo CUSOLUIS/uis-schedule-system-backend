@@ -2,6 +2,7 @@ package com.uis.schedule.backend.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.UUID;
 
 @Setter
 @Getter
@@ -13,9 +14,9 @@ import lombok.*;
 public class GroupEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "group_id")
-    private Long groupId;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "group_id", columnDefinition = "uuid")
+    private UUID groupId;
 
     @Column(length = 250, name = "group_name")
     private String name;

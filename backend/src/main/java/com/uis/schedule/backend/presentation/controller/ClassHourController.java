@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 /**
  * REST Controller for class hour management operations.
  */
@@ -83,7 +85,7 @@ public class ClassHourController {
     })
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<ClassHourDetailDTO>> getClassHourById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ClassHourDetailDTO>> getClassHourById(@PathVariable UUID id) {
         ClassHourDetailDTO classHour = classHourService.findClassHourById(id)
                 .orElseThrow(() -> new ClassHourNotFoundException(id));
         return ResponseEntity.ok(ApiResponse.success(classHour, "Class hour retrieved successfully"));
@@ -98,7 +100,7 @@ public class ClassHourController {
     @GetMapping("/group/{groupId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaginatedResponse<ClassHourListDTO>>> getByGroup(
-            @PathVariable Long groupId,
+            @PathVariable UUID groupId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PaginatedResponse<ClassHourListDTO> classHours = classHourService.findByGroupId(groupId, page, size);
@@ -114,7 +116,7 @@ public class ClassHourController {
     @GetMapping("/classroom/{classroomId}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaginatedResponse<ClassHourListDTO>>> getByClassroom(
-            @PathVariable Long classroomId,
+            @PathVariable UUID classroomId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         PaginatedResponse<ClassHourListDTO> classHours = classHourService.findByClassroomId(classroomId, page, size);
@@ -147,7 +149,7 @@ public class ClassHourController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ApiResponse<ClassHourResponse>> updateClassHour(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateClassHourRequest request) {
         ClassHourResponse updatedClassHour = classHourService.updateClassHour(id, request);
         return ResponseEntity.ok(ApiResponse.success(updatedClassHour, "Class hour updated successfully"));
@@ -162,7 +164,7 @@ public class ClassHourController {
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<ApiResponse<Void>> deleteClassHour(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteClassHour(@PathVariable UUID id) {
         classHourService.deleteClassHour(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Class hour deleted successfully (soft delete)"));
     }

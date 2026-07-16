@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Request DTO for creating a new class hour.
@@ -21,13 +22,13 @@ import java.util.List;
 public class CreateClassHourRequest {
 
     @NotNull(message = "Group ID is required")
-    private Long groupId;
+    private UUID groupId;
 
     @NotNull(message = "Classroom ID is required")
-    private Long classroomId;
+    private UUID classroomId;
 
     @NotEmpty(message = "At least one day ID is required")
-    private List<Long> dayIds;
+    private List<UUID> dayIds;
 
     @NotNull(message = "Start time is required")
     private LocalTime startTime;
@@ -35,7 +36,9 @@ public class CreateClassHourRequest {
     @NotNull(message = "End time is required")
     private LocalTime endTime;
 
+    @NotNull(message = "Start date is required")
     private LocalDate startDate;
 
+    @NotNull(message = "End date is required")
     private LocalDate endDate;
 }

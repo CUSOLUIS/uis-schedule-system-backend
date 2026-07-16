@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -90,7 +91,7 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<ClassroomDetailDTO> findClassroomById(Long id) {
+    public Optional<ClassroomDetailDTO> findClassroomById(UUID id) {
         if (id == null) {
             log.warn("Attempted to find classroom with null ID");
             return Optional.empty();
@@ -132,7 +133,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     }
 
     @Override
-    public ClassroomResponse updateClassroom(Long id, UpdateClassroomRequest request) {
+    public ClassroomResponse updateClassroom(UUID id, UpdateClassroomRequest request) {
         if (id == null) {
             throw new IllegalArgumentException("Classroom ID cannot be null");
         }
@@ -162,7 +163,7 @@ public class ClassroomServiceImpl implements ClassroomService {
     }
 
     @Override
-    public void deleteClassroom(Long id) {
+    public void deleteClassroom(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("Classroom ID cannot be null");
         }

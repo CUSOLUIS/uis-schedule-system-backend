@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * Request DTO for updating an existing group.
  * Fields are optional since it's an update (patch-like behavior).
@@ -23,11 +25,11 @@ public class UpdateGroupRequest {
     @Min(value = 1, message = "Capacity must be at least 1")
     private Integer capacity;
 
-    private Long classroomId;
+    private UUID classroomId;
 
-    private Long teacherId;
+    private UUID teacherId;
 
-    private Long periodId;
+    private UUID periodId;
 
-    private Long subjectId;
+    private UUID subjectId;
 }

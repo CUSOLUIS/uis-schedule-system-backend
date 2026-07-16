@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 /**
  * REST Controller for classroom management operations.
  */
@@ -83,7 +85,7 @@ public class ClassroomController {
     })
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<ClassroomDetailDTO>> getClassroomById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<ClassroomDetailDTO>> getClassroomById(@PathVariable UUID id) {
         ClassroomDetailDTO classroom = classroomService.findClassroomById(id)
                 .orElseThrow(() -> new ClassroomNotFoundException(id));
         return ResponseEntity.ok(ApiResponse.success(classroom, "Classroom retrieved successfully"));
@@ -115,7 +117,7 @@ public class ClassroomController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ApiResponse<ClassroomResponse>> updateClassroom(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateClassroomRequest request) {
         ClassroomResponse updatedClassroom = classroomService.updateClassroom(id, request);
         return ResponseEntity.ok(ApiResponse.success(updatedClassroom, "Classroom updated successfully"));
@@ -130,7 +132,7 @@ public class ClassroomController {
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<ApiResponse<Void>> deleteClassroom(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteClassroom(@PathVariable UUID id) {
         classroomService.deleteClassroom(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Classroom deleted successfully (soft delete)"));
     }

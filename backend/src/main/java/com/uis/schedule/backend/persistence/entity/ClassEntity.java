@@ -2,6 +2,7 @@ package com.uis.schedule.backend.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.UUID;
 
 @Setter
 @Getter
@@ -13,9 +14,9 @@ import lombok.*;
 public class ClassEntity{
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "class_id")
-	private Long classId;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "class_id", columnDefinition = "uuid")
+	private UUID classId;
 
 	@Column(length = 128, name = "class_type")
 	private String classType;

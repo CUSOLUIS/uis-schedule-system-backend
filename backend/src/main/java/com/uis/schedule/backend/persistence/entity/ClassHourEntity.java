@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Setter
 @Getter
@@ -18,9 +19,9 @@ import java.util.Set;
 public class ClassHourEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "class_hour_id")
-    private Long classHourId;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "class_hour_id", columnDefinition = "uuid")
+    private UUID classHourId;
 
     @ManyToMany
     @JoinTable(

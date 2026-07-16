@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -94,7 +95,7 @@ public class ClassHourServiceImpl implements ClassHourService {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<ClassHourDetailDTO> findClassHourById(Long id) {
+    public Optional<ClassHourDetailDTO> findClassHourById(UUID id) {
         if (id == null) {
             log.warn("Attempted to find class hour with null ID");
             return Optional.empty();
@@ -106,7 +107,7 @@ public class ClassHourServiceImpl implements ClassHourService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<ClassHourListDTO> findByGroupId(Long groupId, int page, int size) {
+    public PaginatedResponse<ClassHourListDTO> findByGroupId(UUID groupId, int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<ClassHourEntity> classHoursPage = classHourRepository.findByGroupId_GroupId(groupId, pageable);
@@ -119,7 +120,7 @@ public class ClassHourServiceImpl implements ClassHourService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<ClassHourListDTO> findByClassroomId(Long classroomId, int page, int size) {
+    public PaginatedResponse<ClassHourListDTO> findByClassroomId(UUID classroomId, int page, int size) {
         try {
             Pageable pageable = PageRequest.of(page, size);
             Page<ClassHourEntity> classHoursPage = classHourRepository.findByClassroomId_ClassroomId(classroomId, pageable);
@@ -171,7 +172,7 @@ public class ClassHourServiceImpl implements ClassHourService {
         }
 
         // Validate days
-        List<Long> dayIds = request.getDayIds();
+        List<UUID> dayIds = request.getDayIds();
         if (dayIds == null || dayIds.isEmpty()) {
             throw new IllegalArgumentException("At least one day of the week is required.");
         }
@@ -185,9 +186,9 @@ public class ClassHourServiceImpl implements ClassHourService {
         validateNoOverlap(dayIds, request.getClassroomId(),
                 request.getStartTime(), request.getEndTime(), null);
 
-        // Validate and resolve academic period dates
-        LocalDate startDate = request.getStartDate() != null ? request.getStartDate() : LocalDate.now();
-        LocalDate endDate = request.getEndDate() != null ? request.getEndDate() : LocalDate.now().plusMonths(6);
+        // Validate academic period dates (required by @NotNull in DTO)
+        LocalDate startDate = request.getStartDate();
+        LocalDate endDate = request.getEndDate();
         validateDateRange(startDate, endDate);
 
         try {
@@ -218,7 +219,7 @@ public class ClassHourServiceImpl implements ClassHourService {
     }
 
     @Override
-    public ClassHourResponse updateClassHour(Long id, UpdateClassHourRequest request) {
+    public ClassHourResponse updateClassHour(UUID id, UpdateClassHourRequest request) {
         if (id == null) {
             throw new IllegalArgumentException("Class hour ID cannot be null");
         }
@@ -281,10 +282,10 @@ public class ClassHourServiceImpl implements ClassHourService {
                 || request.getEndTime() != null;
 
         if (scheduleChanged) {
-            List<Long> currentDayIds = classHourToUpdate.getDays().stream()
+            List<UUID> currentDayIds = classHourToUpdate.getDays().stream()
                     .map(DayWeekEntity::getDayId)
                     .collect(Collectors.toList());
-            Long classroomId = classHourToUpdate.getClassroomId() != null ? classHourToUpdate.getClassroomId().getClassroomId() : null;
+            UUID classroomId = classHourToUpdate.getClassroomId() != null ? classHourToUpdate.getClassroomId().getClassroomId() : null;
             validateNoOverlap(currentDayIds, classroomId, startTime, endTime, id);
         }
 
@@ -303,7 +304,7 @@ public class ClassHourServiceImpl implements ClassHourService {
     }
 
     @Override
-    public void deleteClassHour(Long id) {
+    public void deleteClassHour(UUID id) {
         if (id == null) {
             throw new IllegalArgumentException("Class hour ID cannot be null");
         }
@@ -328,11 +329,6 @@ public class ClassHourServiceImpl implements ClassHourService {
 
     // ─── Private validation helpers ──────────────────────────────────
 
-    /**
-     * Validates that the time range is logically correct:
-     * - Both startTime and endTime must not be null
-     * - startTime must be strictly before endTime
-     */
     private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
         if (startTime == null || endTime == null) {
             throw new IllegalArgumentException("Start time and end time are required.");
@@ -342,11 +338,6 @@ public class ClassHourServiceImpl implements ClassHourService {
         }
     }
 
-    /**
-     * Validates that the academic period date range is logically correct:
-     * - Both startDate and endDate must not be null
-     * - startDate must be before or equal to endDate
-     */
     private void validateDateRange(LocalDate startDate, LocalDate endDate) {
         if (startDate == null || endDate == null) {
             throw new IllegalArgumentException("Start date and end date are required.");
@@ -356,23 +347,13 @@ public class ClassHourServiceImpl implements ClassHourService {
         }
     }
 
-    /**
-     * Validates that all provided day IDs exist in the database and
-     * returns the resolved {@link DayWeekEntity} set.
-     * Also rejects duplicate day IDs.
-     *
-     * @param dayIds the list of day IDs to validate and resolve
-     * @return a set of validated DayWeekEntity instances
-     * @throws IllegalArgumentException if any day ID is not found or duplicates exist
-     */
-    private Set<DayWeekEntity> validateAndResolveDays(List<Long> dayIds) {
-        // Check for duplicates
+    private Set<DayWeekEntity> validateAndResolveDays(List<UUID> dayIds) {
         if (dayIds.size() != new HashSet<>(dayIds).size()) {
             throw new IllegalArgumentException("Duplicate day IDs are not allowed.");
         }
 
         Set<DayWeekEntity> days = new HashSet<>();
-        for (Long dayId : dayIds) {
+        for (UUID dayId : dayIds) {
             DayWeekEntity day = dayWeekRepository.findById(dayId)
                     .orElseThrow(() -> new IllegalArgumentException("Day of week not found with ID: " + dayId));
             days.add(day);
@@ -380,24 +361,9 @@ public class ClassHourServiceImpl implements ClassHourService {
         return days;
     }
 
-    /**
-     * Validates that no active class hour overlaps with the given schedule
-     * on any of the specified days, in the same classroom.
-     * <p>
-     * Two ranges [A, B) and [C, D) overlap when A &lt; D AND C &lt; B.
-     * <p>
-     * The classroom is available for two groups that schedule at the same
-     * time slot as long as their classes are on different days.
-     *
-     * @param dayIds      the days of the week IDs
-     * @param classroomId the classroom ID
-     * @param startTime   the proposed start time
-     * @param endTime     the proposed end time
-     * @param excludeId   the class hour ID to exclude (null for create)
-     */
-    private void validateNoOverlap(List<Long> dayIds, Long classroomId,
+    private void validateNoOverlap(List<UUID> dayIds, UUID classroomId,
                                    LocalTime startTime, LocalTime endTime,
-                                   Long excludeId) {
+                                   UUID excludeId) {
         List<ClassHourEntity> overlapping;
 
         if (excludeId != null) {

@@ -1,6 +1,8 @@
 package com.uis.schedule.backend.presentation.dto;
 
 import lombok.AllArgsConstructor;
+
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,12 +15,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class GroupResponse {
-    private Long id;
+    private UUID id;
     private String name;
     private Integer capacity;
-    private Long classroomId;
-    private Long teacherId;
-    private Long periodId;
-    private Long subjectId;
+    private UUID classroomId;
+    private UUID teacherId;
+    private UUID periodId;
+    private UUID subjectId;
     private boolean isActive;
 }

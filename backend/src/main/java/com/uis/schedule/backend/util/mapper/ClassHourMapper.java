@@ -19,14 +19,15 @@ public class ClassHourMapper {
     }
 
     /**
-     * Extracts a sorted list of day IDs from the entity's days set.
+     * Extracts a sorted list of day names (lowercase) from the entity's days set.
+     * The names are sorted alphabetically for consistent ordering.
      */
-    private static List<Long> extractDayIds(ClassHourEntity entity) {
+    private static List<String> extractDayNames(ClassHourEntity entity) {
         if (entity.getDays() == null) {
             return new ArrayList<>();
         }
         return entity.getDays().stream()
-                .map(day -> day.getDayId())
+                .map(day -> day.getName() != null ? day.getName().toLowerCase() : null)
                 .sorted()
                 .collect(Collectors.toList());
     }
@@ -42,7 +43,7 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
-                .dayIds(extractDayIds(entity))
+                .dayNames(extractDayNames(entity))
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
                 .isActive(entity.isActive())
@@ -60,7 +61,7 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
-                .dayIds(extractDayIds(entity))
+                .dayNames(extractDayNames(entity))
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
                 .isActive(entity.isActive())
@@ -78,7 +79,7 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
-                .dayIds(extractDayIds(entity))
+                .dayNames(extractDayNames(entity))
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
                 .isActive(entity.isActive())

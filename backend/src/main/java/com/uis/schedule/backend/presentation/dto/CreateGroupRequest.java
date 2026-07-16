@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * Request DTO for creating a new group.
  */
@@ -27,11 +29,11 @@ public class CreateGroupRequest {
     private Integer capacity;
 
     @NotNull(message = "Classroom ID is required")
-    private Long classroomId;
+    private UUID classroomId;
 
-    private Long teacherId;
+    private UUID teacherId;
 
-    private Long periodId;
+    private UUID periodId;
 
-    private Long subjectId;
+    private UUID subjectId;
 }

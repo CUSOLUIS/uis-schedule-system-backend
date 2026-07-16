@@ -9,16 +9,17 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
-public interface ClassHourRepository extends JpaRepository<ClassHourEntity, Long> {
+public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID> {
 
     Page<ClassHourEntity> findAllByIsActiveTrue(Pageable pageable);
 
     Page<ClassHourEntity> findAllByIsActive(boolean isActive, Pageable pageable);
 
-    Page<ClassHourEntity> findByGroupId_GroupId(Long groupId, Pageable pageable);
+    Page<ClassHourEntity> findByGroupId_GroupId(UUID groupId, Pageable pageable);
 
-    Page<ClassHourEntity> findByClassroomId_ClassroomId(Long classroomId, Pageable pageable);
+    Page<ClassHourEntity> findByClassroomId_ClassroomId(UUID classroomId, Pageable pageable);
 
     /**
      * Find active class hours that overlap with the given time range
@@ -36,11 +37,11 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, Long
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime")
     List<ClassHourEntity> findOverlappingHours(
-            @Param("dayIds") List<Long> dayIds,
-            @Param("classroomId") Long classroomId,
+            @Param("dayIds") List<UUID> dayIds,
+            @Param("classroomId") UUID classroomId,
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime,
-            @Param("excludeId") Long excludeId
+            @Param("excludeId") UUID excludeId
     );
 
     /**
@@ -56,8 +57,8 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, Long
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime")
     List<ClassHourEntity> findOverlappingHoursForCreate(
-            @Param("dayIds") List<Long> dayIds,
-            @Param("classroomId") Long classroomId,
+            @Param("dayIds") List<UUID> dayIds,
+            @Param("classroomId") UUID classroomId,
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime
     );

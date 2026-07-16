@@ -1,6 +1,8 @@
 package com.uis.schedule.backend.presentation.dto;
 
 import lombok.AllArgsConstructor;
+
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,7 +15,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ClassroomListDTO {
-    private Long id;
+    private UUID id;
     private String number;
     private Integer maxCapacity;
     private String building;

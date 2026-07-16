@@ -13,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 /**
  * REST Controller for group management operations.
  */
@@ -83,7 +85,7 @@ public class GroupController {
     })
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<GroupDetailDTO>> getGroupById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<GroupDetailDTO>> getGroupById(@PathVariable UUID id) {
         GroupDetailDTO group = groupService.findGroupById(id)
                 .orElseThrow(() -> new GroupNotFoundException(id));
         return ResponseEntity.ok(ApiResponse.success(group, "Group retrieved successfully"));
@@ -115,7 +117,7 @@ public class GroupController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<ApiResponse<GroupResponse>> updateGroup(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateGroupRequest request) {
         GroupResponse updatedGroup = groupService.updateGroup(id, request);
         return ResponseEntity.ok(ApiResponse.success(updatedGroup, "Group updated successfully"));
@@ -130,7 +132,7 @@ public class GroupController {
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
-    public ResponseEntity<ApiResponse<Void>> deleteGroup(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteGroup(@PathVariable UUID id) {
         groupService.deleteGroup(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Group deleted successfully (soft delete)"));
     }

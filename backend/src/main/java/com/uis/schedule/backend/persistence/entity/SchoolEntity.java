@@ -3,6 +3,7 @@ package com.uis.schedule.backend.persistence.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.util.UUID;
 
 @Setter
 @Getter
@@ -13,9 +14,9 @@ import lombok.*;
 @Table(name = "school")
 public class SchoolEntity {
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "school_id")
-	private Long schoolId;
+	@GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "school_id", columnDefinition = "uuid")
+	private UUID schoolId;
 
 	@Column(length = 100)
 	private String name;
