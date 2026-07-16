@@ -1,9 +1,6 @@
 package com.uis.schedule.backend.util.mapper;
 
 import com.uis.schedule.backend.persistence.entity.ClassHourEntity;
-import com.uis.schedule.backend.persistence.entity.ClassroomEntity;
-import com.uis.schedule.backend.persistence.entity.DayWeekEntity;
-import com.uis.schedule.backend.persistence.entity.GroupEntity;
 import com.uis.schedule.backend.presentation.dto.*;
 import org.springframework.stereotype.Component;
 
