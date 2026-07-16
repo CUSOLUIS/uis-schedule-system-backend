@@ -26,6 +26,9 @@ public class CreateClassHourRequest {
     @NotNull(message = "Day ID is required")
     private Long dayId;
 
-    @NotNull(message = "Hour is required")
-    private LocalTime hour;
+    @NotNull(message = "Start time is required")
+    private LocalTime startTime;
+
+    @NotNull(message = "End time is required")
+    private LocalTime endTime;
 }

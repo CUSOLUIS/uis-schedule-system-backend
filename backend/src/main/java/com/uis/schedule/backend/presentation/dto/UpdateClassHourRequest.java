@@ -23,5 +23,7 @@ public class UpdateClassHourRequest {
 
     private Long dayId;
 
-    private LocalTime hour;
+    private LocalTime startTime;
+
+    private LocalTime endTime;
 }

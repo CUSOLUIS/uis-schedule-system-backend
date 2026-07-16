@@ -77,15 +77,15 @@ ON CONFLICT DO NOTHING;
 -- =========================================================
 -- 9. CLASS HOURS (5 mock records)
 -- =========================================================
-INSERT INTO public.class_hour (class_hour_id, hour, day_id, group_id, classroom_id, is_active) VALUES
+INSERT INTO public.class_hour (class_hour_id, start_time, end_time, day_id, group_id, classroom_id, is_active) VALUES
 -- Group 1 (Prog I - A): Lunes 8:00-10:00 en Aula 101
-(1, '08:00:00', 1, 1, 1, true),
+(1, '08:00:00', '10:00:00', 1, 1, 1, true),
 -- Group 2 (Prog I - B): Martes 10:00-12:00 en Lab 201
-(2, '10:00:00', 2, 2, 2, true),
+(2, '10:00:00', '12:00:00', 2, 2, 2, true),
 -- Group 3 (ED - A): Miércoles 08:00-10:00 en Aula 102
-(3, '08:00:00', 3, 3, 3, true),
+(3, '08:00:00', '10:00:00', 3, 3, 3, true),
 -- Group 4 (BD - A): Jueves 14:00-16:00 en Aula 101
-(4, '14:00:00', 4, 4, 1, true),
+(4, '14:00:00', '16:00:00', 4, 4, 1, true),
 -- Group 5 (BD - B): Viernes 10:00-12:00 en Lab 201
-(5, '10:00:00', 5, 5, 2, true)
+(5, '10:00:00', '12:00:00', 5, 5, 2, true)
 ON CONFLICT DO NOTHING;

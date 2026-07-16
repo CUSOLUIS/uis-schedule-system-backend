@@ -16,7 +16,8 @@ import java.time.LocalTime;
 @AllArgsConstructor
 public class ClassHourListDTO {
     private Long id;
-    private LocalTime hour;
+    private LocalTime startTime;
+    private LocalTime endTime;
     private Long groupId;
     private Long classroomId;
     private Long dayId;

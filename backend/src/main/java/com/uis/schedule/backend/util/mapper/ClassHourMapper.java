@@ -21,7 +21,8 @@ public class ClassHourMapper {
 
         return ClassHourListDTO.builder()
                 .id(entity.getClassHourId())
-                .hour(entity.getHour())
+                .startTime(entity.getStartTime())
+                .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
                 .dayId(entity.getDay() != null ? entity.getDay().getDayId() : null)
@@ -36,7 +37,8 @@ public class ClassHourMapper {
 
         return ClassHourDetailDTO.builder()
                 .id(entity.getClassHourId())
-                .hour(entity.getHour())
+                .startTime(entity.getStartTime())
+                .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
                 .dayId(entity.getDay() != null ? entity.getDay().getDayId() : null)
@@ -51,7 +53,8 @@ public class ClassHourMapper {
 
         return ClassHourResponse.builder()
                 .id(entity.getClassHourId())
-                .hour(entity.getHour())
+                .startTime(entity.getStartTime())
+                .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
                 .dayId(entity.getDay() != null ? entity.getDay().getDayId() : null)
@@ -64,8 +67,11 @@ public class ClassHourMapper {
             return;
         }
 
-        if (request.getHour() != null) {
-            entity.setHour(request.getHour());
+        if (request.getStartTime() != null) {
+            entity.setStartTime(request.getStartTime());
+        }
+        if (request.getEndTime() != null) {
+            entity.setEndTime(request.getEndTime());
         }
     }
 }

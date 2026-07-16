@@ -23,8 +23,11 @@ public class ClassHourEntity {
     @JoinColumn(name = "day_id")
     private DayWeekEntity day;
 
-    @Column(name = "hour")
-    private LocalTime hour;
+    @Column(name = "start_time", nullable = false)
+    private LocalTime startTime;
+
+    @Column(name = "end_time", nullable = false)
+    private LocalTime endTime;
 
     @ManyToOne
     @JoinColumn(name = "group_id")
