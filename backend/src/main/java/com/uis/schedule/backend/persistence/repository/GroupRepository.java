@@ -1,9 +1,14 @@
 package com.uis.schedule.backend.persistence.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import com.uis.schedule.backend.persistence.entity.GroupEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.UUID;
 
-public interface GroupRepository extends JpaRepository<GroupEntity, Long> {
+public interface GroupRepository extends JpaRepository<GroupEntity, UUID> {
 
+    Page<GroupEntity> findAllByIsActiveTrue(Pageable pageable);
+
+    Page<GroupEntity> findAllByIsActive(boolean isActive, Pageable pageable);
 }
-

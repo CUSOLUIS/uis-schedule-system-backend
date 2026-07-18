@@ -2,11 +2,13 @@ package com.uis.schedule.backend.presentation.dto;
 
 import lombok.*;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @AllArgsConstructor
 public class SubjectDTO {
-	private Long subjectId;
+    private UUID subjectId;
 	private String code;
 	private String name;
 	private int credits;

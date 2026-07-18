@@ -4,11 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.UUID;
+
 @Getter
 @Setter
 @AllArgsConstructor
 public class ScheduleDTO {
-	private Long scheduleId;
+    private UUID scheduleId;
 	private ClassDTO classId;
 	private UserListDTO user;
 }

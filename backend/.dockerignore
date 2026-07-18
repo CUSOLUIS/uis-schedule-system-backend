@@ -1,0 +1,11 @@
+target/
+.git/
+.gitignore
+.env
+*.iml
+.idea/
+*.class
+*.jar
+*.log
+.mvn/wrapper/maven-wrapper.jar
+mvnw.cmd

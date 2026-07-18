@@ -1,11 +1,11 @@
 package com.uis.schedule.backend.configuration.jwt;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -83,9 +83,9 @@ public class JwtFilter extends OncePerRequestFilter {
         }
       } catch (Exception e) {
         log.error("Authentication error: {}", e.getMessage());
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-        response.setContentType("application/json");
-        response.getWriter().write("{\"token\": null, \"message\": \"Authentication failed: " + e.getMessage() + "\"}");
+        SecurityContextHolder.clearContext();
+        // Delegate to CustomAuthenticationEntryPoint via ServletException
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication failed: " + e.getMessage());
         return;
       }
     }

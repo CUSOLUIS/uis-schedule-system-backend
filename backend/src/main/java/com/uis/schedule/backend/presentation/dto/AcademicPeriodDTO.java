@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.presentation.dto;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 import lombok.*;
 
@@ -8,7 +9,7 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 public class AcademicPeriodDTO {
-    private Long periodId;
+    private UUID periodId;
 	private String name;
 	private LocalDate startDate;
 	private LocalDate endDate;
