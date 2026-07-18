@@ -1,11 +1,13 @@
 package com.uis.schedule.backend.service.implementation;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,13 +18,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
-import com.uis.schedule.backend.persistence.entity.UserEntity;
+import com.uis.schedule.backend.persistence.entity.PasswordResetTokenEntity;
 import com.uis.schedule.backend.persistence.entity.RoleEntity;
+import com.uis.schedule.backend.persistence.entity.UserEntity;
+import com.uis.schedule.backend.persistence.repository.PasswordResetTokenRepository;
 import com.uis.schedule.backend.persistence.repository.RoleRepository;
 import com.uis.schedule.backend.persistence.repository.UserRepository;
-import com.uis.schedule.backend.presentation.dto.*;
+import com.uis.schedule.backend.presentation.dto.AuthResponse;
+import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
+import com.uis.schedule.backend.presentation.dto.CreateUserRequest;
+import com.uis.schedule.backend.presentation.dto.PaginatedResponse;
+import com.uis.schedule.backend.presentation.dto.UpdateUserRequest;
+import com.uis.schedule.backend.presentation.dto.UserDetailDTO;
+import com.uis.schedule.backend.presentation.dto.UserListDTO;
+import com.uis.schedule.backend.presentation.dto.UserResponse;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.UserService;
+import com.uis.schedule.backend.util.TokenGenerator;
 import com.uis.schedule.backend.util.mapper.UserMapper;
 
 import jakarta.persistence.criteria.Join;
@@ -43,6 +55,13 @@ public class UserServiceImpl implements UserService {
   private final AuthenticationManager authenticationManager;
   private final JwtUtil jwtUtil;
   private final PasswordEncoder passwordEncoder;
+  private final PasswordResetTokenRepository passwordResetTokenRepository;
+  private final TokenGenerator tokenGenerator;
+  private final EmailService emailService;
+  private final UserService self;
+
+  @org.springframework.beans.factory.annotation.Value("${app.password-reset.expiration-hours:2}")
+  private int passwordResetExpirationHours;
 
   @Autowired
   public UserServiceImpl(
@@ -50,12 +69,20 @@ public class UserServiceImpl implements UserService {
       RoleRepository roleRepository,
       AuthenticationManager authenticationManager,
       JwtUtil jwtUtil,
-      PasswordEncoder passwordEncoder) {
+      PasswordEncoder passwordEncoder,
+      PasswordResetTokenRepository passwordResetTokenRepository,
+      TokenGenerator tokenGenerator,
+      EmailService emailService,
+      @Lazy UserService self) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
     this.authenticationManager = authenticationManager;
     this.jwtUtil = jwtUtil;
     this.passwordEncoder = passwordEncoder;
+    this.passwordResetTokenRepository = passwordResetTokenRepository;
+    this.tokenGenerator = tokenGenerator;
+    this.emailService = emailService;
+    this.self = self;
   }
 
   @Override
@@ -233,6 +260,12 @@ public class UserServiceImpl implements UserService {
 
   @Override
   @Transactional(readOnly = true)
+  public PaginatedResponse<UserListDTO> listAllUsersByActive(int page, int size, boolean active) {
+    return self.findByStatus(active, page, size);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
   public PaginatedResponse<UserListDTO> findByRole(String roleName, int page, int size) {
     try {
       org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page,
@@ -268,11 +301,11 @@ public class UserServiceImpl implements UserService {
 
     // Protection: An admin cannot delete another admin
     boolean isTargetAdmin = user.getRoles().stream()
-        .anyMatch(role -> role.getName().equals("ADMINISTRADOR"));
+        .anyMatch(role -> role.getName().equals("ADMINISTRATOR"));
 
     if (isTargetAdmin) {
-      log.warn("Attempt to delete an ADMINISTRADOR account blocked for ID: {}", id);
-      throw new IllegalStateException("Security protection: Users with ADMINISTRADOR role cannot be deleted.");
+      log.warn("Attempt to delete an ADMINISTRATOR account blocked for ID: {}", id);
+      throw new IllegalStateException("Security protection: Users with ADMINISTRATOR role cannot be deleted.");
     }
 
     user.setEnable(false);
@@ -377,5 +410,77 @@ public class UserServiceImpl implements UserService {
     }
 
     return new AuthResponse(null, "Bad credentials");
+  }
+
+  @Override
+  public void requestPasswordReset(String email) {
+    String normalizedEmail = email.toLowerCase().trim();
+
+    UserEntity user = userRepository.findUserEntityByEmailOrUsername(normalizedEmail, normalizedEmail)
+        .orElse(null);
+
+    // No exponer si el correo existe o no para evitar enumeración de cuentas.
+    if (user == null) {
+      log.info("Solicitud de recuperación para correo no registrado: {}", normalizedEmail);
+      return;
+    }
+
+    passwordResetTokenRepository.deleteByUserUserId(user.getUserId());
+
+    PasswordResetTokenEntity resetToken = PasswordResetTokenEntity.builder()
+        .user(user)
+        .token(tokenGenerator.generateToken())
+        .createdAt(LocalDateTime.now())
+        .expiresAt(LocalDateTime.now().plusHours(passwordResetExpirationHours))
+        .build();
+
+    passwordResetTokenRepository.save(resetToken);
+    emailService.sendPasswordResetEmail(user.getEmail(), resetToken.getToken());
+  }
+
+  @Override
+  public void resetPassword(String token, String newPassword) {
+    if (newPassword == null || newPassword.length() < 8 || newPassword.length() > 256) {
+      throw new IllegalArgumentException("La nueva contraseña debe tener entre 8 y 256 caracteres");
+    }
+
+    PasswordResetTokenEntity resetToken = passwordResetTokenRepository.findByToken(token)
+        .orElseThrow(() -> new IllegalArgumentException("El enlace de recuperación no es válido"));
+
+    if (resetToken.getUsedAt() != null) {
+      throw new IllegalArgumentException("El enlace de recuperación ya fue utilizado");
+    }
+
+    if (resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+      throw new IllegalArgumentException("El enlace de recuperación ha expirado");
+    }
+
+    UserEntity user = resetToken.getUser();
+    user.setPassword(passwordEncoder.encode(newPassword));
+    resetToken.setUsedAt(LocalDateTime.now());
+
+    userRepository.save(user);
+    passwordResetTokenRepository.save(resetToken);
+  }
+
+  @Override
+  public void changePassword(String usernameOrEmail, String currentPassword, String newPassword) {
+    if (newPassword == null || newPassword.length() < 8 || newPassword.length() > 256) {
+      throw new IllegalArgumentException("La nueva contraseña debe tener entre 8 y 256 caracteres");
+    }
+
+    if (newPassword.equals(currentPassword)) {
+      throw new IllegalArgumentException("La nueva contraseña debe ser diferente a la actual");
+    }
+
+    UserEntity user = userRepository.findUserEntityByEmailOrUsername(usernameOrEmail, usernameOrEmail)
+        .orElseThrow(() -> new UserNotFoundException("Usuario autenticado no encontrado"));
+
+    if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+      throw new IllegalArgumentException("La contraseña actual no es correcta");
+    }
+
+    user.setPassword(passwordEncoder.encode(newPassword));
+    userRepository.save(user);
   }
 }

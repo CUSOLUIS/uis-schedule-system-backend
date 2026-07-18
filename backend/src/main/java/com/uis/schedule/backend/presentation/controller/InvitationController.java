@@ -25,7 +25,7 @@ public class InvitationController {
     private final InvitationService invitationService;
     private final UserRepository userRepository;
 
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PostMapping
     public ResponseEntity<InvitationResponse> createInvitation(
             @Valid @RequestBody CreateInvitationRequest request,
@@ -52,13 +52,13 @@ public class InvitationController {
         return ResponseEntity.ok(invitationService.completeInvitation(token, request));
     }
 
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @GetMapping("/pending")
     public ResponseEntity<List<InvitationResponse>> getPendingApprovals() {
         return ResponseEntity.ok(invitationService.getPendingApprovals());
     }
 
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PutMapping("/{invitationId}/approve")
     public ResponseEntity<InvitationResponse> approveInvitation(
             @PathVariable UUID invitationId,
@@ -66,7 +66,7 @@ public class InvitationController {
         return ResponseEntity.ok(invitationService.approveInvitation(invitationId, request));
     }
 
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PutMapping("/{invitationId}/reject")
     public ResponseEntity<InvitationResponse> rejectInvitation(@PathVariable UUID invitationId) {
         return ResponseEntity.ok(invitationService.rejectInvitation(invitationId));
