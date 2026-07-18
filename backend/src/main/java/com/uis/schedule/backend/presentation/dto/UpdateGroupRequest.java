@@ -2,6 +2,7 @@ package com.uis.schedule.backend.presentation.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,4 +33,6 @@ public class UpdateGroupRequest {
     private UUID periodId;
 
     private UUID subjectId;
+
+    private Boolean isActive;
 }

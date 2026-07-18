@@ -1,5 +1,6 @@
 package com.uis.schedule.backend.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 
 import java.util.UUID;
@@ -21,5 +22,6 @@ public class ClassroomResponse {
     private String building;
     private String campus;
     private String type;
+    @JsonProperty("isActive")
     private boolean isActive;
 }

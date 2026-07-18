@@ -76,5 +76,9 @@ public class GroupMapper {
         if (request.getCapacity() != null) {
             entity.setCapacity(request.getCapacity());
         }
+
+        if (request.getIsActive() != null) {
+            entity.setActive(request.getIsActive());
+        }
     }
 }

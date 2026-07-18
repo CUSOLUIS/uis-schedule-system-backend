@@ -103,5 +103,9 @@ public class ClassHourMapper {
         if (request.getEndDate() != null) {
             entity.setEndDate(request.getEndDate());
         }
+
+        if (request.getIsActive() != null) {
+            entity.setActive(request.getIsActive());
+        }
     }
 }

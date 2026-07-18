@@ -1,5 +1,6 @@
 package com.uis.schedule.backend.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 
 import java.util.UUID;
@@ -22,5 +23,6 @@ public class GroupDetailDTO {
     private UUID teacherId;
     private UUID periodId;
     private UUID subjectId;
+    @JsonProperty("isActive")
     private boolean isActive;
 }

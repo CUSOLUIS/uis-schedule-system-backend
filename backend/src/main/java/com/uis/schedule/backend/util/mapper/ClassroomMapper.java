@@ -86,5 +86,9 @@ public class ClassroomMapper {
         if (request.getType() != null) {
             entity.setType(request.getType());
         }
+
+        if (request.getIsActive() != null) {
+            entity.setActive(request.getIsActive());
+        }
     }
 }

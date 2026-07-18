@@ -1,5 +1,6 @@
 package com.uis.schedule.backend.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,5 +27,6 @@ public class ClassHourListDTO {
     private List<String> dayNames;
     private LocalDate startDate;
     private LocalDate endDate;
+    @JsonProperty("isActive")
     private boolean isActive;
 }
