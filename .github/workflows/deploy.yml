@@ -1,0 +1,31 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, backend-pi]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compilar con Maven
+        working-directory: ./backend
+        run: mvn compile -Dmaven.compiler.release=17 -q
+
+      - name: Actualizar código en carpeta de despliegue
+        working-directory: /home/dev/proyects/uis-schedule-system-backend
+        run: |
+          git fetch origin ${{ github.sha }}
+          git reset --hard ${{ github.sha }}
+          git clean -fd
+
+      - name: Rebuild y reinicio del contenedor
+        working-directory: /home/dev/proyects
+        run: |
+          docker-compose stop backend-spring-api
+          docker-compose rm -f backend-spring-api
+          docker-compose build --no-cache backend-spring-api
+          docker-compose up -d --no-deps backend-spring-api

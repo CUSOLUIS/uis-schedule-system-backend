@@ -183,9 +183,9 @@ public class RoleServiceImpl implements RoleService {
             throw new IllegalArgumentException("Role is already disabled (soft-deleted)");
         }
 
-        if ("ADMINISTRADOR".equalsIgnoreCase(role.getName())) {
-            log.warn("Attempt to delete ADMINISTRADOR role blocked for ID: {}", id);
-            throw new IllegalStateException("Security protection: The ADMINISTRADOR role cannot be deleted.");
+        if ("ADMINISTRATOR".equalsIgnoreCase(role.getName())) {
+            log.warn("Attempt to delete ADMINISTRATOR role blocked for ID: {}", id);
+            throw new IllegalStateException("Security protection: The ADMINISTRATOR role cannot be deleted.");
         }
 
         role.setIsActive(false);

@@ -24,10 +24,10 @@ public class DataInitializer implements CommandLineRunner {
 
         try {
             // Initialize roles
-            initializeRole("ADMINISTRADOR");
-            initializeRole("OPERADOR");
-            initializeRole("DOCENTE");
-            initializeRole("ESTUDIANTE");
+            initializeRole("ADMINISTRATOR");
+            initializeRole("OPERATOR");
+            initializeRole("TEACHER");
+            initializeRole("STUDENT");
 
             log.info("Roles initialized successfully");
         } catch (Exception e) {

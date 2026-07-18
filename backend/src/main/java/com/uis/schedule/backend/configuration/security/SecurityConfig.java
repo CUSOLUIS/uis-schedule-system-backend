@@ -70,7 +70,9 @@ public class SecurityConfig {
                 "/swagger-resources/**",
                 "/webjars/**",
                 "/api/v1/invitations/validate/**",
-                "/api/v1/invitations/complete/**"
+                "/api/v1/invitations/complete/**",
+                "/api/v1/auth/password/**",
+                "/auth/password/**"
         };
 
         httpSecurity
