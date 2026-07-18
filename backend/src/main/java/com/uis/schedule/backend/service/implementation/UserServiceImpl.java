@@ -301,11 +301,11 @@ public class UserServiceImpl implements UserService {
 
     // Protection: An admin cannot delete another admin
     boolean isTargetAdmin = user.getRoles().stream()
-        .anyMatch(role -> role.getName().equals("ADMINISTRADOR"));
+        .anyMatch(role -> role.getName().equals("ADMINISTRATOR"));
 
     if (isTargetAdmin) {
-      log.warn("Attempt to delete an ADMINISTRADOR account blocked for ID: {}", id);
-      throw new IllegalStateException("Security protection: Users with ADMINISTRADOR role cannot be deleted.");
+      log.warn("Attempt to delete an ADMINISTRATOR account blocked for ID: {}", id);
+      throw new IllegalStateException("Security protection: Users with ADMINISTRATOR role cannot be deleted.");
     }
 
     user.setEnable(false);
