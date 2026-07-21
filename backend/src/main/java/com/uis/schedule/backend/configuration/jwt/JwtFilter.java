@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,6 +24,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class JwtFilter extends OncePerRequestFilter {
+  private static final String AUTHORIZATION_HEADER = "Authorization";
+  private static final String BEARER_PREFIX = "Bearer ";
+
   @Autowired
   private JwtUtil jwtUtil;
 
@@ -34,6 +36,9 @@ public class JwtFilter extends OncePerRequestFilter {
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String p = request.getServletPath();
+    if (p.equals("/auth/password/change")) {
+      return false;
+    }
     return p.startsWith("/auth/")
         || p.startsWith("/swagger-ui/")
         || p.startsWith("/v3/api-docs")
@@ -45,12 +50,12 @@ public class JwtFilter extends OncePerRequestFilter {
   protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
       @NonNull FilterChain filterChain)
       throws ServletException, IOException {
-    String authorizationHeader = request.getHeader("Authorization");
+    String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
     String token = null;
     String username = null;
 
-    if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-      token = authorizationHeader.substring(7);
+    if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
+      token = authorizationHeader.substring(BEARER_PREFIX.length());
       try {
         username = jwtUtil.extractUserName(token);
 
@@ -58,7 +63,7 @@ public class JwtFilter extends OncePerRequestFilter {
           Claims claims = jwtUtil.extractAllClaims(token);
           Object roleClaim = claims.get("roles");
 
-          // Create authorities list
+          // Crear lista de autoridades
           List<SimpleGrantedAuthority> authorities = Collections.emptyList();
           if (roleClaim instanceof List<?> roles) {
             authorities = roles.stream()
@@ -87,20 +92,20 @@ public class JwtFilter extends OncePerRequestFilter {
   }
 
   public String getUsernameFromToken(HttpServletRequest request) {
-    String authorizationHeader = request.getHeader("Authorization");
+    String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
     String token = null;
-    if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-      token = authorizationHeader.substring(7);
+    if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
+      token = authorizationHeader.substring(BEARER_PREFIX.length());
       return jwtUtil.extractUserName(token);
     }
     return null;
   }
 
   public Claims getClaimsFromToken(HttpServletRequest request) {
-    String authorizationHeader = request.getHeader("Authorization");
+    String authorizationHeader = request.getHeader(AUTHORIZATION_HEADER);
     String token = null;
-    if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-      token = authorizationHeader.substring(7);
+    if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
+      token = authorizationHeader.substring(BEARER_PREFIX.length());
       return jwtUtil.extractAllClaims(token);
     }
     return null;

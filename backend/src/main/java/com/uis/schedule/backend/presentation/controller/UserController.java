@@ -40,7 +40,7 @@ public class UserController {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @GetMapping
-  @PreAuthorize("hasRole('ADMINISTRADOR')")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
   public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> listAll(
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "10") int size,
@@ -50,14 +50,14 @@ public class UserController {
     return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully"));
   }
 
-  @Operation(summary = "Get users by status", description = "Retrieves a paginated list of users filtered by their enable status. Requires ADMINISTRADOR role.")
+  @Operation(summary = "Get users by status", description = "Retrieves a paginated list of users filtered by their enable status. Requires ADMINISTRATOR role.")
   @ApiResponses(value = {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of users by status"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRADOR role"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRATOR role"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @GetMapping("/status/{status}")
-  @PreAuthorize("hasRole('ADMINISTRADOR')")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
   public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> getByStatus(
       @PathVariable boolean status,
       @RequestParam(defaultValue = "0") int page,
@@ -66,14 +66,14 @@ public class UserController {
     return ResponseEntity.ok(ApiResponse.success(users, "Users retrieved successfully by status"));
   }
 
-  @Operation(summary = "Get users by role", description = "Retrieves a paginated list of users filtered by their role name. Requires ADMINISTRADOR role.")
+  @Operation(summary = "Get users by role", description = "Retrieves a paginated list of users filtered by their role name. Requires ADMINISTRATOR role.")
   @ApiResponses(value = {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the paginated list of users by role"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRADOR role"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required ADMINISTRATOR role"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @GetMapping("/role/{roleName}")
-  @PreAuthorize("hasRole('ADMINISTRADOR')")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
   public ResponseEntity<ApiResponse<PaginatedResponse<UserListDTO>>> getByRole(
       @PathVariable String roleName,
       @RequestParam(defaultValue = "0") int page,
@@ -105,7 +105,7 @@ public class UserController {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @PostMapping
-  @PreAuthorize("hasRole('ADMINISTRADOR')")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
   public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody CreateUserRequest request) {
     UserResponse createdUser = userService.createUser(request);
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -121,7 +121,7 @@ public class UserController {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @PutMapping("/{id}")
-  @PreAuthorize("hasRole('ADMINISTRADOR')")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
   public ResponseEntity<ApiResponse<UserResponse>> updateUser(
       @PathVariable UUID id,
       @Valid @RequestBody UpdateUserRequest request) {
@@ -137,7 +137,7 @@ public class UserController {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
   @DeleteMapping("/{id}")
-  @PreAuthorize("hasRole('ADMINISTRADOR')")
+  @PreAuthorize("hasRole('ADMINISTRATOR')")
   public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
     userService.deleteUser(id);
     return ResponseEntity.ok(ApiResponse.success(null, "User deleted successfully (soft delete)"));
