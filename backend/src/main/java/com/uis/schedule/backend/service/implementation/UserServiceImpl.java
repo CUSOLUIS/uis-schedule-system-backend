@@ -364,11 +364,13 @@ public class UserServiceImpl implements UserService {
         return new AuthResponse(token, "User registered successfully");
       } else {
         log.warn("Email already registered or username taken: {}", authSignupRequest.email());
-        return new AuthResponse(null, "Email already registered or username taken");
+        throw new IllegalArgumentException("Email already registered or username taken");
       }
+    } catch (IllegalArgumentException e) {
+      throw e;
     } catch (Exception ex) {
       log.error("Error during user signup", ex);
-      return new AuthResponse(null, "Something went wrong");
+      throw new RuntimeException("Failed to register user");
     }
   }
 
@@ -377,39 +379,35 @@ public class UserServiceImpl implements UserService {
     String normalizedEmail = email.toLowerCase();
     log.info("Login attempt for email: {}", normalizedEmail);
 
-    try {
-      Authentication authentication = authenticationManager.authenticate(
-          new UsernamePasswordAuthenticationToken(normalizedEmail, password));
+    Authentication authentication = authenticationManager.authenticate(
+        new UsernamePasswordAuthenticationToken(normalizedEmail, password));
 
-      if (authentication.isAuthenticated()) {
-        String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
-            .getUsername();
-
-        UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
-            .orElseThrow(() -> {
-              log.error("Authenticated user not found in database: {}", username);
-              return new UserNotFoundException("Authenticated user not found in database: " + username);
-            });
-
-        java.util.Set<String> rolesSet = user.getRoles().stream()
-            .map(RoleEntity::getName)
-            .collect(Collectors.toSet());
-
-        String token = jwtUtil.generateToken(
-            user.getUserId(),
-            user.getUsername(),
-            user.getEmail(),
-            rolesSet,
-            user.isEnable());
-
-        log.info("Login successful for user: {} with roles: {}", username, rolesSet);
-        return new AuthResponse(token, "Login successful");
-      }
-    } catch (Exception e) {
-      log.error("Login failed for email: {}", email, e);
+    if (!authentication.isAuthenticated()) {
+      throw new IllegalArgumentException("Bad credentials");
     }
 
-    return new AuthResponse(null, "Bad credentials");
+    String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
+        .getUsername();
+
+    UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
+        .orElseThrow(() -> {
+          log.error("Authenticated user not found in database: {}", username);
+          return new UserNotFoundException("Authenticated user not found in database: " + username);
+        });
+
+    java.util.Set<String> rolesSet = user.getRoles().stream()
+        .map(RoleEntity::getName)
+        .collect(Collectors.toSet());
+
+    String token = jwtUtil.generateToken(
+        user.getUserId(),
+        user.getUsername(),
+        user.getEmail(),
+        rolesSet,
+        user.isEnable());
+
+    log.info("Login successful for user: {} with roles: {}", username, rolesSet);
+    return new AuthResponse(token, "Login successful");
   }
 
   @Override

@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -106,6 +107,13 @@ public class GlobalExceptionHandler {
             detail = "Invalid value for field '" + fieldPath + "'" + formatHint;
         }
         return build(HttpStatus.BAD_REQUEST, detail);
+    }
+
+    // ─── 401 — Authentication failures ────────────
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleAuthenticationException(AuthenticationException ex) {
+        return build(HttpStatus.UNAUTHORIZED, "Bad credentials");
     }
 
     // ─── 403 — Access denied (handled by Security too, but as a safety net) ──

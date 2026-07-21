@@ -52,7 +52,7 @@ public class AuthenticationController {
   @Operation(summary = "Authenticate a user", description = "Logs in a user with email/username and password, and returns a JWT token.")
   @ApiResponses(value = {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad credentials"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Bad credentials"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found")
   })
   @PostMapping("/login")
