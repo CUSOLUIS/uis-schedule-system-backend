@@ -134,4 +134,23 @@ public interface UserService {
    * @param newPassword     nueva contraseña
    */
   void changePassword(String usernameOrEmail, String currentPassword, String newPassword);
+
+  /**
+   * Cierra la sesión de un usuario autenticado invalidando su token en el
+   * servidor. Una vez invalidado, cualquier solicitud posterior que use ese
+   * mismo token debe ser rechazada.
+   *
+   * @param accessToken  el access token (sin el prefijo "Bearer ") a invalidar
+   * @param refreshToken el refresh token asociado a revocar (opcional, puede ser null)
+   */
+  void logout(String accessToken, String refreshToken);
+
+  /**
+   * Emite un nuevo access token (y rota el refresh token) a partir de un
+   * refresh token válido, no revocado y no expirado.
+   *
+   * @param refreshToken el refresh token entregado por el cliente
+   * @return AuthResponse con el nuevo access token y el nuevo refresh token
+   */
+  AuthResponse refresh(String refreshToken);
 }

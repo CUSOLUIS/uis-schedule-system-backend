@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.presentation.handler;
 
 import com.uis.schedule.backend.presentation.dto.ApiResponse;
+import com.uis.schedule.backend.service.exception.InvalidTokenException;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,13 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(
         ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
         HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(InvalidTokenException.class)
+  public ResponseEntity<ApiResponse<Object>> handleInvalidTokenException(InvalidTokenException ex) {
+    return new ResponseEntity<>(
+        ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
+        HttpStatus.UNAUTHORIZED);
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
