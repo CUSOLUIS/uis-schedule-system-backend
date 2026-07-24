@@ -9,6 +9,9 @@ import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.presentation.dto.*;
 import com.uis.schedule.backend.service.exception.InvitationNotFoundException;
 import com.uis.schedule.backend.service.exception.InvalidTokenException;
+import com.uis.schedule.backend.service.exception.InvitationConflictException;
+import com.uis.schedule.backend.service.exception.RoleNotFoundException;
+import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.InvitationService;
 import com.uis.schedule.backend.util.TokenGenerator;
 import lombok.RequiredArgsConstructor;
@@ -39,21 +42,20 @@ public class InvitationServiceImpl implements InvitationService {
     @Override
     @Transactional
     public InvitationResponse createInvitation(CreateInvitationRequest request, UUID adminId) {
-
         // Bloquea si ya hay una invitación pendiente o completada esperando aprobación
         if (invitationRepository.existsByEmailAndStatus(request.getEmail(), "PENDING") ||
             invitationRepository.existsByEmailAndStatus(request.getEmail(), "COMPLETED")) {
-            throw new RuntimeException("Ya existe una invitación activa para: " + request.getEmail());
+            throw new InvitationConflictException("Ya existe una invitación activa para: " + request.getEmail());
         }
 
         // Bloquea si el correo ya pertenece a un usuario registrado
         if (userRepository.existsByEmail(request.getEmail().toLowerCase())) {
-            throw new RuntimeException("Ya existe un usuario registrado con ese correo.");
+            throw new InvitationConflictException("Ya existe un usuario registrado con ese correo.");
         }
 
         // Obtiene el admin que está creando la invitación
         UserEntity admin = userRepository.findById(adminId)
-                .orElseThrow(() -> new RuntimeException("Admin no encontrado"));
+                .orElseThrow(() -> new UserNotFoundException("Admin no encontrado"));
 
         // Genera el token único para el enlace
         String token = tokenGenerator.generateToken();
@@ -78,16 +80,15 @@ public class InvitationServiceImpl implements InvitationService {
 
     @Override
     public InvitationResponse validateToken(String token) {
-
         UserInvitationEntity invitation = invitationRepository.findByToken(token)
                 .orElseThrow(() -> new InvalidTokenException("El enlace no es válido"));
 
         if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new InvalidTokenException("El enlace ha expirado");
+            throw new InvitationConflictException("El enlace ha expirado");
         }
 
         if (!invitation.getStatus().equals("PENDING")) {
-            throw new InvalidTokenException("Este enlace ya fue utilizado");
+            throw new InvitationConflictException("Este enlace ya fue utilizado");
         }
 
         return mapToResponse(invitation);
@@ -96,21 +97,20 @@ public class InvitationServiceImpl implements InvitationService {
     @Override
     @Transactional
     public InvitationResponse completeInvitation(String token, CompleteInvitationRequest request) {
-
         UserInvitationEntity invitation = invitationRepository.findByToken(token)
                 .orElseThrow(() -> new InvalidTokenException("El enlace no es válido"));
 
         if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new InvalidTokenException("El enlace ha expirado");
+            throw new InvitationConflictException("El enlace ha expirado");
         }
 
         if (!invitation.getStatus().equals("PENDING")) {
-            throw new InvalidTokenException("Este enlace ya fue utilizado");
+            throw new InvitationConflictException("Este enlace ya fue utilizado");
         }
 
         // Verifica que el username no esté en uso
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("El nombre de usuario ya está en uso");
+            throw new InvitationConflictException("El nombre de usuario ya está en uso");
         }
 
         invitation.setStatus("COMPLETED");
@@ -136,16 +136,15 @@ public class InvitationServiceImpl implements InvitationService {
     @Override
     @Transactional
     public InvitationResponse approveInvitation(UUID invitationId, ApproveInvitationRequest request) {
-
         UserInvitationEntity invitation = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new InvitationNotFoundException("Invitación no encontrada"));
 
         if (!invitation.getStatus().equals("COMPLETED")) {
-            throw new RuntimeException("La invitación no está en estado COMPLETED");
+            throw new InvitationConflictException("La invitación no está en estado COMPLETED");
         }
 
         RoleEntity role = roleRepository.findByName(request.getRoleName())
-                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + request.getRoleName()));
+                .orElseThrow(() -> new RoleNotFoundException("Rol no encontrado: " + request.getRoleName()));
 
         UserEntity newUser = UserEntity.builder()
                 .email(invitation.getEmail())
@@ -171,7 +170,6 @@ public class InvitationServiceImpl implements InvitationService {
     @Override
     @Transactional
     public InvitationResponse rejectInvitation(UUID invitationId) {
-
         UserInvitationEntity invitation = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new InvitationNotFoundException("Invitación no encontrada"));
 
