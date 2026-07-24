@@ -6,6 +6,8 @@ import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.exception.InvitationNotFoundException;
 import com.uis.schedule.backend.service.exception.InvitationConflictException;
 import com.uis.schedule.backend.service.exception.RoleNotFoundException;
+import com.uis.schedule.backend.service.exception.UserAlreadyExistsException;
+import com.uis.schedule.backend.service.exception.UserAlreadyExistsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -49,6 +51,13 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(InvitationConflictException.class)
   public ResponseEntity<ApiResponse<Object>> handleInvitationConflictException(InvitationConflictException ex) {
+    return new ResponseEntity<>(
+        ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
+        HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(UserAlreadyExistsException.class)
+  public ResponseEntity<ApiResponse<Object>> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
     return new ResponseEntity<>(
         ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
         HttpStatus.CONFLICT);
