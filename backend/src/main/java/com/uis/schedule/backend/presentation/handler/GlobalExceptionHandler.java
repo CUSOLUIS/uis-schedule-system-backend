@@ -36,6 +36,15 @@ public class GlobalExceptionHandler {
         HttpStatus.BAD_REQUEST);
   }
 
+  @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+  public ResponseEntity<ApiResponse<Object>> handleAuthenticationException(
+      org.springframework.security.core.AuthenticationException ex) {
+    String message = "Usuario o contraseña incorrectos";
+    return new ResponseEntity<>(
+        ApiResponse.error(message, Collections.singletonList(message)),
+        HttpStatus.UNAUTHORIZED);
+  }
+
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiResponse<Object>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
     List<String> errors = ex.getBindingResult()

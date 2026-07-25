@@ -389,40 +389,32 @@ public class UserServiceImpl implements UserService {
     String normalizedEmail = email.toLowerCase();
     log.info("Login attempt for email: {}", normalizedEmail);
 
-    try {
-      Authentication authentication = authenticationManager.authenticate(
-          new UsernamePasswordAuthenticationToken(normalizedEmail, password));
+    Authentication authentication = authenticationManager.authenticate(
+        new UsernamePasswordAuthenticationToken(normalizedEmail, password));
 
-      if (authentication.isAuthenticated()) {
-        String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
-            .getUsername();
+    String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
+        .getUsername();
 
-        UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
-            .orElseThrow(() -> {
-              log.error("Authenticated user not found in database: {}", username);
-              return new UserNotFoundException("Authenticated user not found in database: " + username);
-            });
+    UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
+        .orElseThrow(() -> {
+          log.error("Authenticated user not found in database: {}", username);
+          return new UserNotFoundException("Authenticated user not found in database: " + username);
+        });
 
-        java.util.Set<String> rolesSet = user.getRoles().stream()
-            .map(RoleEntity::getName)
-            .collect(Collectors.toSet());
+    java.util.Set<String> rolesSet = user.getRoles().stream()
+        .map(RoleEntity::getName)
+        .collect(Collectors.toSet());
 
-        String token = jwtUtil.generateToken(
-            user.getUserId(),
-            user.getUsername(),
-            user.getEmail(),
-            rolesSet,
-            user.isEnable());
+    String token = jwtUtil.generateToken(
+        user.getUserId(),
+        user.getUsername(),
+        user.getEmail(),
+        rolesSet,
+        user.isEnable());
 
-        log.info("Login successful for user: {} with roles: {}", username, rolesSet);
-        String refreshToken = issueRefreshToken(user);
-        return new AuthResponse(token, refreshToken, "Login successful");
-      }
-    } catch (Exception e) {
-      log.error("Login failed for email: {}", email, e);
-    }
-
-    return new AuthResponse(null, null, "Bad credentials");
+    log.info("Login successful for user: {} with roles: {}", username, rolesSet);
+    String refreshToken = issueRefreshToken(user);
+    return new AuthResponse(token, refreshToken, "Login successful");
   }
 
   /**
