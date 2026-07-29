@@ -385,7 +385,6 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
-  @Override
   public AuthResponse login(String email, String password) {
     String normalizedEmail = email.toLowerCase();
     log.info("Login attempt for email: {}", normalizedEmail);
