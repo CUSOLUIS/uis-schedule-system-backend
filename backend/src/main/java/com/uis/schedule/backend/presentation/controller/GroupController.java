@@ -76,6 +76,54 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(groups, "Groups retrieved successfully by status"));
     }
 
+    @Operation(summary = "Search groups by name", description = "Searches active groups by name (case-insensitive partial match). Requires authentication.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved matching groups"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/search")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaginatedResponse<GroupListDTO>>> searchByName(
+            @RequestParam String name,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<GroupListDTO> groups = groupService.searchByName(name, page, size);
+        return ResponseEntity.ok(ApiResponse.success(groups, "Groups retrieved successfully by name"));
+    }
+
+    @Operation(summary = "Get groups by classroom", description = "Retrieves active groups assigned to a specific classroom. Requires authentication.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved groups by classroom"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/classroom/{classroomId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaginatedResponse<GroupListDTO>>> getByClassroom(
+            @PathVariable UUID classroomId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<GroupListDTO> groups = groupService.findByClassroom(classroomId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(groups, "Groups retrieved successfully by classroom"));
+    }
+
+    @Operation(summary = "Get groups by subject", description = "Retrieves active groups for a specific subject. Requires authentication.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved groups by subject"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/subject/{subjectId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaginatedResponse<GroupListDTO>>> getBySubject(
+            @PathVariable UUID subjectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<GroupListDTO> groups = groupService.findBySubject(subjectId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(groups, "Groups retrieved successfully by subject"));
+    }
+
     @Operation(summary = "Get group by ID", description = "Retrieves detailed information of a single group. Requires authentication.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved the group"),

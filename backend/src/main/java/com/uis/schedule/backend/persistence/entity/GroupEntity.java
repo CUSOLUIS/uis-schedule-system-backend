@@ -28,12 +28,12 @@ public class GroupEntity {
     @JoinColumn(name = "teacher_id")
     private TeacherEntity teacherId;
 
-    @ManyToOne
-    @JoinColumn(name = "period_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "period_id", nullable = false)
     private AcademicPeriodEntity periodId;
 
-    @ManyToOne
-    @JoinColumn(name = "subject_id")
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "subject_id", nullable = false)
     private SubjectEntity subjectId;
 
     @ManyToOne

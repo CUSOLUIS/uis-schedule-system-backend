@@ -18,6 +18,12 @@ public interface GroupService {
 
     Optional<GroupDetailDTO> findGroupById(UUID id);
 
+    PaginatedResponse<GroupListDTO> searchByName(String name, int page, int size);
+
+    PaginatedResponse<GroupListDTO> findByClassroom(UUID classroomId, int page, int size);
+
+    PaginatedResponse<GroupListDTO> findBySubject(UUID subjectId, int page, int size);
+
     GroupResponse createGroup(CreateGroupRequest request);
 
     GroupResponse updateGroup(UUID id, UpdateGroupRequest request);

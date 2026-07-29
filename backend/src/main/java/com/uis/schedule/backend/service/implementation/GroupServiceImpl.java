@@ -1,8 +1,12 @@
 package com.uis.schedule.backend.service.implementation;
 
 import com.uis.schedule.backend.persistence.entity.*;
+import com.uis.schedule.backend.persistence.repository.AcademicPeriodRepository;
+import com.uis.schedule.backend.persistence.repository.ClassHourRepository;
 import com.uis.schedule.backend.persistence.repository.ClassroomRepository;
 import com.uis.schedule.backend.persistence.repository.GroupRepository;
+import com.uis.schedule.backend.persistence.repository.SubjectRepository;
+import com.uis.schedule.backend.persistence.repository.TeacherRepository;
 import com.uis.schedule.backend.presentation.dto.*;
 import com.uis.schedule.backend.service.exception.GroupNotFoundException;
 import com.uis.schedule.backend.service.interfaces.GroupService;
@@ -31,11 +35,24 @@ public class GroupServiceImpl implements GroupService {
 
     private final GroupRepository groupRepository;
     private final ClassroomRepository classroomRepository;
+    private final AcademicPeriodRepository academicPeriodRepository;
+    private final SubjectRepository subjectRepository;
+    private final TeacherRepository teacherRepository;
+    private final ClassHourRepository classHourRepository;
 
     @Autowired
-    public GroupServiceImpl(GroupRepository groupRepository, ClassroomRepository classroomRepository) {
+    public GroupServiceImpl(GroupRepository groupRepository,
+                            ClassroomRepository classroomRepository,
+                            AcademicPeriodRepository academicPeriodRepository,
+                            SubjectRepository subjectRepository,
+                            TeacherRepository teacherRepository,
+                            ClassHourRepository classHourRepository) {
         this.groupRepository = groupRepository;
         this.classroomRepository = classroomRepository;
+        this.academicPeriodRepository = academicPeriodRepository;
+        this.subjectRepository = subjectRepository;
+        this.teacherRepository = teacherRepository;
+        this.classHourRepository = classHourRepository;
     }
 
     @Override
@@ -73,6 +90,45 @@ public class GroupServiceImpl implements GroupService {
             return convertToPaginatedResponse(groupsPage);
         } catch (Exception e) {
             log.error("Error retrieving groups by status: {}", status, e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<GroupListDTO> searchByName(String name, int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<GroupEntity> groupsPage = groupRepository.findByNameContainingIgnoreCaseAndIsActiveTrue(name, pageable);
+            return convertToPaginatedResponse(groupsPage);
+        } catch (Exception e) {
+            log.error("Error searching groups by name: {}", name, e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<GroupListDTO> findByClassroom(UUID classroomId, int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<GroupEntity> groupsPage = groupRepository.findByClassroomId_ClassroomIdAndIsActiveTrue(classroomId, pageable);
+            return convertToPaginatedResponse(groupsPage);
+        } catch (Exception e) {
+            log.error("Error retrieving groups by classroom: {}", classroomId, e);
+            return new PaginatedResponse<>();
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<GroupListDTO> findBySubject(UUID subjectId, int page, int size) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<GroupEntity> groupsPage = groupRepository.findBySubjectId_SubjectIdAndIsActiveTrue(subjectId, pageable);
+            return convertToPaginatedResponse(groupsPage);
+        } catch (Exception e) {
+            log.error("Error retrieving groups by subject: {}", subjectId, e);
             return new PaginatedResponse<>();
         }
     }
@@ -120,6 +176,8 @@ public class GroupServiceImpl implements GroupService {
         }
 
         validateCapacity(request.getCapacity(), classroom.getMaxCapacity());
+
+        checkClassroomAvailability(classroom.getClassroomId(), null);
 
         try {
             GroupEntity entity = GroupEntity.builder()
@@ -173,6 +231,9 @@ public class GroupServiceImpl implements GroupService {
             }
 
             groupToUpdate.setClassroomId(classroom);
+
+            // Check classroom availability (schedule conflict)
+            checkClassroomAvailability(classroom.getClassroomId(), id);
 
             // Validate capacity against the (possibly new) classroom
             int capacityToValidate = request.getCapacity() != null ? request.getCapacity() : groupToUpdate.getCapacity();
@@ -242,10 +303,46 @@ public class GroupServiceImpl implements GroupService {
 
     /**
      * Resolves optional FK relations (teacher, period, subject) from their IDs.
+     * Period and Subject are mandatory; Teacher is optional.
      */
     private void resolveOptionalRelations(GroupEntity entity, UUID teacherId, UUID periodId, UUID subjectId) {
-        // Teacher resolution would require TeacherRepository injection — kept simple for now
-        // These optional relations can be resolved when their CRUDs are implemented
-        // For now, we leave them null if no repository is available
+        if (periodId != null) {
+            AcademicPeriodEntity period = academicPeriodRepository.findById(periodId)
+                    .orElseThrow(() -> new IllegalArgumentException("Academic period not found with ID: " + periodId));
+            entity.setPeriodId(period);
+        }
+        if (subjectId != null) {
+            SubjectEntity subject = subjectRepository.findById(subjectId)
+                    .orElseThrow(() -> new IllegalArgumentException("Subject not found with ID: " + subjectId));
+            entity.setSubjectId(subject);
+        }
+        if (teacherId != null) {
+            TeacherEntity teacher = teacherRepository.findById(teacherId)
+                    .orElseThrow(() -> new IllegalArgumentException("Teacher not found with ID: " + teacherId));
+            entity.setTeacherId(teacher);
+        }
+    }
+
+    /**
+     * Checks whether a classroom already has active class hours scheduled
+     * for a different group. Used to warn or prevent double-booking when
+     * assigning a classroom to a group.
+     * Note: Fine-grained time/day overlap validation is handled at the
+     * ClassHour level via ClassHourRepository.findOverlappingHours().
+     */
+    private void checkClassroomAvailability(UUID classroomId, UUID excludeGroupId) {
+        Pageable pageable = PageRequest.of(0, 1);
+        Page<ClassHourEntity> existingHours = classHourRepository.findByClassroomId_ClassroomId(classroomId, pageable);
+
+        boolean hasConflict = existingHours.getContent().stream()
+                .anyMatch(ch -> ch.isActive()
+                        && ch.getGroupId() != null
+                        && !ch.getGroupId().getGroupId().equals(excludeGroupId));
+
+        if (hasConflict) {
+            throw new IllegalArgumentException(
+                    "Classroom is already assigned to another group with active class hours. "
+                    + "Verify there are no schedule conflicts before proceeding.");
+        }
     }
 }

@@ -33,7 +33,9 @@ public class CreateGroupRequest {
 
     private UUID teacherId;
 
+    @NotNull(message = "Period ID is required")
     private UUID periodId;
 
+    @NotNull(message = "Subject ID is required")
     private UUID subjectId;
 }
