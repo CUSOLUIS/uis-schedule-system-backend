@@ -20,6 +20,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import com.uis.schedule.backend.persistence.repository.RevokedTokenRepository ;
 
 @Slf4j
 @Component
@@ -33,10 +34,13 @@ public class JwtFilter extends OncePerRequestFilter {
   @Autowired
   private CustomerDetailService customerDetailService;
 
+  @Autowired
+  private RevokedTokenRepository revokedTokenRepository;
+
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
     String p = request.getServletPath();
-    if (p.equals("/auth/password/change")) {
+    if (p.equals("/auth/password/change") || p.equals("/auth/logout")) {
       return false;
     }
     return p.startsWith("/auth/")
@@ -58,6 +62,24 @@ public class JwtFilter extends OncePerRequestFilter {
       token = authorizationHeader.substring(BEARER_PREFIX.length());
       try {
         username = jwtUtil.extractUserName(token);
+
+        String tokenType = jwtUtil.extractTokenType(token);
+        if (tokenType != null && !JwtUtil.TOKEN_TYPE_ACCESS.equals(tokenType)) {
+          log.warn("Rejected request: token type '{}' is not a valid access token", tokenType);
+          response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+          response.setContentType("application/json");
+          response.getWriter().write("{\"token\": null, \"message\": \"Invalid token type\"}");
+          return;
+        }
+
+        String jti = jwtUtil.extractJti(token);
+        if (jti != null && revokedTokenRepository.existsByJti(jti)) {
+          log.warn("Rejected request with revoked token (jti={})", jti);
+          response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+          response.setContentType("application/json");
+          response.getWriter().write("{\"token\": null, \"message\": \"Token has been revoked\"}");
+          return;
+        }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
           Claims claims = jwtUtil.extractAllClaims(token);

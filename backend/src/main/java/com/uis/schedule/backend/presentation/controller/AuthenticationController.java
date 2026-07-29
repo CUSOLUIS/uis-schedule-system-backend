@@ -1,5 +1,7 @@
 package com.uis.schedule.backend.presentation.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,6 +20,8 @@ import com.uis.schedule.backend.presentation.dto.AuthResponse;
 import com.uis.schedule.backend.presentation.dto.AuthSignupRequest;
 import com.uis.schedule.backend.presentation.dto.ChangePasswordRequest;
 import com.uis.schedule.backend.presentation.dto.ForgotPasswordRequest;
+import com.uis.schedule.backend.presentation.dto.LogoutRequest;
+import com.uis.schedule.backend.presentation.dto.RefreshTokenRequest;
 import com.uis.schedule.backend.presentation.dto.ResetPasswordRequest;
 import com.uis.schedule.backend.service.interfaces.UserService;
 
@@ -95,6 +99,7 @@ public class AuthenticationController {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado")
   })
   @PreAuthorize("isAuthenticated()")
+  @SecurityRequirement(name = "bearerAuth")
   @PutMapping("/password/change")
   public ResponseEntity<ApiResponse<Object>> changePassword(
       @AuthenticationPrincipal UserDetails userDetails,
@@ -105,5 +110,39 @@ public class AuthenticationController {
         changePasswordRequest.newPassword());
 
     return ResponseEntity.ok(ApiResponse.success(null, "Contraseña actualizada correctamente"));
+  }
+
+  @Operation(summary = "Cerrar sesión", description = "Invalida en el servidor el token JWT del usuario autenticado. Cualquier solicitud posterior con ese token será rechazada con 401. Si se incluye el refreshToken en el body, también se revoca.")
+  @ApiResponses(value = {
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Sesión cerrada correctamente"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o token inválido")
+  })
+  @PreAuthorize("isAuthenticated()")
+  @SecurityRequirement(name = "bearerAuth")
+  @PostMapping("/logout")
+  public ResponseEntity<ApiResponse<Object>> logout(
+      HttpServletRequest request,
+      @RequestBody(required = false) LogoutRequest logoutRequest) {
+    String authorizationHeader = request.getHeader("Authorization");
+    String accessToken = authorizationHeader != null && authorizationHeader.startsWith("Bearer ")
+        ? authorizationHeader.substring("Bearer ".length())
+        : authorizationHeader;
+    String refreshToken = logoutRequest != null ? logoutRequest.refreshToken() : null;
+
+    userService.logout(accessToken, refreshToken);
+
+    return ResponseEntity.ok(ApiResponse.success(null, "Sesión cerrada correctamente"));
+  }
+
+  @Operation(summary = "Renovar access token", description = "Emite un nuevo access token (y rota el refresh token) a partir de un refresh token válido, sin requerir volver a autenticarse con credenciales.")
+  @ApiResponses(value = {
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token renovado correctamente"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Refresh token inválido, revocado o expirado")
+  })
+  @PostMapping("/refresh")
+  public ResponseEntity<ApiResponse<AuthResponse>> refresh(
+      @Valid @RequestBody RefreshTokenRequest refreshTokenRequest) {
+    AuthResponse authResponse = userService.refresh(refreshTokenRequest.refreshToken());
+    return ResponseEntity.ok(ApiResponse.success(authResponse, "Token renovado correctamente"));
   }
 }

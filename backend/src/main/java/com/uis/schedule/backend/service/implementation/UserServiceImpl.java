@@ -19,9 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
 import com.uis.schedule.backend.persistence.entity.PasswordResetTokenEntity;
+import com.uis.schedule.backend.persistence.entity.RefreshTokenEntity;
+import com.uis.schedule.backend.persistence.entity.RevokedTokenEntity;
 import com.uis.schedule.backend.persistence.entity.RoleEntity;
 import com.uis.schedule.backend.persistence.entity.UserEntity;
 import com.uis.schedule.backend.persistence.repository.PasswordResetTokenRepository;
+import com.uis.schedule.backend.persistence.repository.RefreshTokenRepository;
 import com.uis.schedule.backend.persistence.repository.RoleRepository;
 import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.presentation.dto.AuthResponse;
@@ -32,6 +35,8 @@ import com.uis.schedule.backend.presentation.dto.UpdateUserRequest;
 import com.uis.schedule.backend.presentation.dto.UserDetailDTO;
 import com.uis.schedule.backend.presentation.dto.UserListDTO;
 import com.uis.schedule.backend.presentation.dto.UserResponse;
+import com.uis.schedule.backend.service.exception.InvalidTokenException;
+import com.uis.schedule.backend.persistence.repository.RevokedTokenRepository;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.UserService;
 import com.uis.schedule.backend.util.TokenGenerator;
@@ -59,6 +64,8 @@ public class UserServiceImpl implements UserService {
   private final TokenGenerator tokenGenerator;
   private final EmailService emailService;
   private final UserService self;
+  private final RevokedTokenRepository revokedTokenRepository;
+  private final RefreshTokenRepository refreshTokenRepository;
 
   @org.springframework.beans.factory.annotation.Value("${app.password-reset.expiration-hours:2}")
   private int passwordResetExpirationHours;
@@ -73,7 +80,9 @@ public class UserServiceImpl implements UserService {
       PasswordResetTokenRepository passwordResetTokenRepository,
       TokenGenerator tokenGenerator,
       EmailService emailService,
-      @Lazy UserService self) {
+      @Lazy UserService self,
+      RevokedTokenRepository revokedTokenRepository,
+      RefreshTokenRepository refreshTokenRepository) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
     this.authenticationManager = authenticationManager;
@@ -83,6 +92,8 @@ public class UserServiceImpl implements UserService {
     this.tokenGenerator = tokenGenerator;
     this.emailService = emailService;
     this.self = self;
+    this.revokedTokenRepository = revokedTokenRepository;
+    this.refreshTokenRepository = refreshTokenRepository;
   }
 
   @Override
@@ -360,14 +371,13 @@ public class UserServiceImpl implements UserService {
             newUser.getEmail(),
             rolesSet,
             newUser.isEnable());
+        String refreshToken = issueRefreshToken(newUser);
 
-        return new AuthResponse(token, "User registered successfully");
+        return new AuthResponse(token, refreshToken, "User registered successfully");
       } else {
         log.warn("Email already registered or username taken: {}", authSignupRequest.email());
         throw new IllegalArgumentException("Email already registered or username taken");
       }
-    } catch (IllegalArgumentException e) {
-      throw e;
     } catch (Exception ex) {
       log.error("Error during user signup", ex);
       throw new RuntimeException("Failed to register user");
@@ -375,39 +385,70 @@ public class UserServiceImpl implements UserService {
   }
 
   @Override
+  @Override
   public AuthResponse login(String email, String password) {
     String normalizedEmail = email.toLowerCase();
     log.info("Login attempt for email: {}", normalizedEmail);
 
-    Authentication authentication = authenticationManager.authenticate(
-        new UsernamePasswordAuthenticationToken(normalizedEmail, password));
+    try {
+      Authentication authentication = authenticationManager.authenticate(
+          new UsernamePasswordAuthenticationToken(normalizedEmail, password));
 
-    if (!authentication.isAuthenticated()) {
+      if (!authentication.isAuthenticated()) {
+        throw new IllegalArgumentException("Bad credentials");
+      }
+
+      String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
+          .getUsername();
+
+      UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
+          .orElseThrow(() -> {
+            log.error("Authenticated user not found in database: {}", username);
+            return new UserNotFoundException("Authenticated user not found in database: " + username);
+          });
+
+      java.util.Set<String> rolesSet = user.getRoles().stream()
+          .map(RoleEntity::getName)
+          .collect(Collectors.toSet());
+
+      String token = jwtUtil.generateToken(
+          user.getUserId(),
+          user.getUsername(),
+          user.getEmail(),
+          rolesSet,
+          user.isEnable());
+
+      String refreshToken = issueRefreshToken(user);
+
+      log.info("Login successful for user: {} with roles: {}", username, rolesSet);
+      return new AuthResponse(token, refreshToken, "Login successful");
+    } catch (IllegalArgumentException e) {
+      throw e;
+    } catch (Exception e) {
+      log.error("Login failed for email: {}", normalizedEmail, e);
       throw new IllegalArgumentException("Bad credentials");
     }
+  }
+  /**
+   * Genera un refresh token para el usuario y lo persiste como registro
+   * activo ("whitelist"), necesario para poder validarlo/rotarlo/revocarlo
+   * en {@link #refresh(String)} y {@link #logout(String, String)}.
+   */
+  private String issueRefreshToken(UserEntity user) {
+    String refreshToken = jwtUtil.generateRefreshToken(user.getUserId(), user.getEmail());
+    String jti = jwtUtil.extractJti(refreshToken);
+    LocalDateTime expiresAt = jwtUtil.extractExpirationAsLocalDateTime(refreshToken);
 
-    String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
-        .getUsername();
+    RefreshTokenEntity entity = RefreshTokenEntity.builder()
+        .jti(jti)
+        .user(user)
+        .createdAt(LocalDateTime.now())
+        .expiresAt(expiresAt)
+        .revoked(false)
+        .build();
+    refreshTokenRepository.save(entity);
 
-    UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
-        .orElseThrow(() -> {
-          log.error("Authenticated user not found in database: {}", username);
-          return new UserNotFoundException("Authenticated user not found in database: " + username);
-        });
-
-    java.util.Set<String> rolesSet = user.getRoles().stream()
-        .map(RoleEntity::getName)
-        .collect(Collectors.toSet());
-
-    String token = jwtUtil.generateToken(
-        user.getUserId(),
-        user.getUsername(),
-        user.getEmail(),
-        rolesSet,
-        user.isEnable());
-
-    log.info("Login successful for user: {} with roles: {}", username, rolesSet);
-    return new AuthResponse(token, "Login successful");
+    return refreshToken;
   }
 
   @Override
@@ -480,5 +521,109 @@ public class UserServiceImpl implements UserService {
 
     user.setPassword(passwordEncoder.encode(newPassword));
     userRepository.save(user);
+  }
+
+  @Override
+  public void logout(String accessToken, String refreshToken) {
+    if (accessToken == null || accessToken.isBlank()) {
+      throw new InvalidTokenException("Token inválido");
+    }
+
+    String jti;
+    LocalDateTime expiresAt;
+    String username;
+    try {
+      jti = jwtUtil.extractJti(accessToken);
+      expiresAt = jwtUtil.extractExpirationAsLocalDateTime(accessToken);
+      username = jwtUtil.extractUserName(accessToken);
+    } catch (Exception ex) {
+      throw new InvalidTokenException("Token inválido o expirado");
+    }
+
+    if (jti == null || jti.isBlank()) {
+      throw new InvalidTokenException("El token no contiene un identificador válido");
+    }
+
+    if (!revokedTokenRepository.existsByJti(jti)) {
+      UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
+          .orElseThrow(() -> new UserNotFoundException("Usuario autenticado no encontrado"));
+
+      RevokedTokenEntity revokedToken = RevokedTokenEntity.builder()
+          .jti(jti)
+          .user(user)
+          .revokedAt(LocalDateTime.now())
+          .expiresAt(expiresAt)
+          .build();
+
+      revokedTokenRepository.save(revokedToken);
+      log.info("Logout exitoso para el usuario {} (jti={})", username, jti);
+    } else {
+      log.info("Logout: el token con jti {} ya se encontraba revocado", jti);
+    }
+
+    // Revocar también el refresh token asociado, si el cliente lo envía,
+    // para que no pueda usarse posteriormente para obtener nuevos access tokens.
+    if (refreshToken != null && !refreshToken.isBlank()) {
+      try {
+        String refreshJti = jwtUtil.extractJti(refreshToken);
+        if (refreshJti != null && !refreshJti.isBlank()) {
+          refreshTokenRepository.revokeByJti(refreshJti);
+        }
+      } catch (Exception ex) {
+        log.warn("No fue posible revocar el refresh token durante el logout: {}", ex.getMessage());
+      }
+    }
+  }
+
+  @Override
+  public AuthResponse refresh(String refreshToken) {
+    if (refreshToken == null || refreshToken.isBlank()) {
+      throw new InvalidTokenException("Refresh token inválido");
+    }
+
+    String jti;
+    String tokenType;
+    String email;
+    try {
+      jti = jwtUtil.extractJti(refreshToken);
+      tokenType = jwtUtil.extractTokenType(refreshToken);
+      email = jwtUtil.extractUserName(refreshToken);
+      jwtUtil.extractExpirationAsLocalDateTime(refreshToken);
+    } catch (Exception ex) {
+      throw new InvalidTokenException("Refresh token inválido o expirado");
+    }
+
+    if (!JwtUtil.TOKEN_TYPE_REFRESH.equals(tokenType)) {
+      throw new InvalidTokenException("El token proporcionado no es un refresh token");
+    }
+
+    RefreshTokenEntity storedToken = refreshTokenRepository.findByJti(jti)
+        .orElseThrow(() -> new InvalidTokenException("Refresh token no reconocido"));
+
+    if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+      throw new InvalidTokenException("Refresh token revocado o expirado");
+    }
+
+    UserEntity user = userRepository.findUserEntityByEmailOrUsername(email, email)
+        .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+
+    // Rotación: se revoca el refresh token usado y se emite uno nuevo, para
+    // limitar la ventana de uso de cada refresh token en caso de robo.
+    refreshTokenRepository.revokeByJti(jti);
+
+    java.util.Set<String> rolesSet = user.getRoles().stream()
+        .map(RoleEntity::getName)
+        .collect(Collectors.toSet());
+
+    String newAccessToken = jwtUtil.generateToken(
+        user.getUserId(),
+        user.getUsername(),
+        user.getEmail(),
+        rolesSet,
+        user.isEnable());
+    String newRefreshToken = issueRefreshToken(user);
+
+    log.info("Refresh exitoso para el usuario {}", email);
+    return new AuthResponse(newAccessToken, newRefreshToken, "Token renovado correctamente");
   }
 }
