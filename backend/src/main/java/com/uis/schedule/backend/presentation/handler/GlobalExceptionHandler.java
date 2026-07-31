@@ -3,8 +3,12 @@ package com.uis.schedule.backend.presentation.handler;
 import com.uis.schedule.backend.presentation.dto.ApiResponse;
 import com.uis.schedule.backend.service.exception.InvalidTokenException;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
+import com.uis.schedule.backend.service.exception.InvitationNotFoundException;
+import com.uis.schedule.backend.service.exception.InvitationConflictException;
+import com.uis.schedule.backend.service.exception.RoleNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -22,11 +26,40 @@ public class GlobalExceptionHandler {
         HttpStatus.NOT_FOUND);
   }
 
+  @ExceptionHandler(InvitationNotFoundException.class)
+  public ResponseEntity<ApiResponse<Object>> handleInvitationNotFoundException(InvitationNotFoundException ex) {
+    return new ResponseEntity<>(
+        ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
+        HttpStatus.NOT_FOUND);
+  }
+
+  @ExceptionHandler(RoleNotFoundException.class)
+  public ResponseEntity<ApiResponse<Object>> handleRoleNotFoundException(RoleNotFoundException ex) {
+    return new ResponseEntity<>(
+        ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
+        HttpStatus.NOT_FOUND);
+  }
+
   @ExceptionHandler(InvalidTokenException.class)
   public ResponseEntity<ApiResponse<Object>> handleInvalidTokenException(InvalidTokenException ex) {
     return new ResponseEntity<>(
         ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
-        HttpStatus.UNAUTHORIZED);
+        HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler(InvitationConflictException.class)
+  public ResponseEntity<ApiResponse<Object>> handleInvitationConflictException(InvitationConflictException ex) {
+    return new ResponseEntity<>(
+        ApiResponse.error(ex.getMessage(), Collections.singletonList(ex.getMessage())),
+        HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ApiResponse<Object>> handleAccessDeniedException(AccessDeniedException ex) {
+    String message = "No tienes permisos para realizar esta acción";
+    return new ResponseEntity<>(
+        ApiResponse.error(message, Collections.singletonList(message)),
+        HttpStatus.FORBIDDEN);
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
