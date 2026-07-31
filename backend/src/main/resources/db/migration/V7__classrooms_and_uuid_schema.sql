@@ -1,6 +1,6 @@
 -- =========================================================
--- V6: Classrooms & UUID schema
--- =================================================--------
+-- V7: Classrooms & UUID schema
+-- =========================================================
 -- Flattened migration that consolidates:
 --   - classroom.number type fix  (integer → varchar(50))
 --   - classroom soft-delete      (is_active)
