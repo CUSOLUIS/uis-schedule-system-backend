@@ -108,8 +108,12 @@ public class InvitationServiceImpl implements InvitationService {
             throw new InvitationConflictException("Este enlace ya fue utilizado");
         }
 
-        // Verifica que el username no esté en uso
+        // Verifica que el username no esté en uso por un usuario ya aprobado
         if (userRepository.existsByUsername(request.getUsername())) {
+            throw new InvitationConflictException("El nombre de usuario ya está en uso");
+        }
+        if (invitationRepository.existsByUsernameAndStatusIn(
+                request.getUsername(), List.of("PENDING", "COMPLETED"))) {
             throw new InvitationConflictException("El nombre de usuario ya está en uso");
         }
 
