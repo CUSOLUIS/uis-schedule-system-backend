@@ -57,40 +57,25 @@ public class ClassHourServiceImpl implements ClassHourService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> listClassHours(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<ClassHourEntity> classHoursPage = classHourRepository.findAllByIsActiveTrue(pageable);
-            return convertToPaginatedResponse(classHoursPage);
-        } catch (Exception e) {
-            log.error("Error retrieving active class hours list", e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository.findAllByIsActiveTrue(pageable);
+        return convertToPaginatedResponse(classHoursPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> listAllClassHoursIncludingInactive(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<ClassHourEntity> classHoursPage = classHourRepository.findAll(pageable);
-            return convertToPaginatedResponse(classHoursPage);
-        } catch (Exception e) {
-            log.error("Error retrieving all class hours list", e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository.findAll(pageable);
+        return convertToPaginatedResponse(classHoursPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> findByStatus(boolean status, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<ClassHourEntity> classHoursPage = classHourRepository.findAllByIsActive(status, pageable);
-            return convertToPaginatedResponse(classHoursPage);
-        } catch (Exception e) {
-            log.error("Error retrieving class hours by status: {}", status, e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository.findAllByIsActive(status, pageable);
+        return convertToPaginatedResponse(classHoursPage);
     }
 
     @Override
@@ -108,27 +93,17 @@ public class ClassHourServiceImpl implements ClassHourService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> findByGroupId(UUID groupId, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<ClassHourEntity> classHoursPage = classHourRepository.findByGroupId_GroupId(groupId, pageable);
-            return convertToPaginatedResponse(classHoursPage);
-        } catch (Exception e) {
-            log.error("Error retrieving class hours by group ID: {}", groupId, e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository.findByGroupId_GroupId(groupId, pageable);
+        return convertToPaginatedResponse(classHoursPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> findByClassroomId(UUID classroomId, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<ClassHourEntity> classHoursPage = classHourRepository.findByClassroomId_ClassroomId(classroomId, pageable);
-            return convertToPaginatedResponse(classHoursPage);
-        } catch (Exception e) {
-            log.error("Error retrieving class hours by classroom ID: {}", classroomId, e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository.findByClassroomId_ClassroomId(classroomId, pageable);
+        return convertToPaginatedResponse(classHoursPage);
     }
 
     private PaginatedResponse<ClassHourListDTO> convertToPaginatedResponse(Page<ClassHourEntity> classHoursPage) {
@@ -182,14 +157,14 @@ public class ClassHourServiceImpl implements ClassHourService {
         // Validate time range
         validateTimeRange(request.getStartTime(), request.getEndTime());
 
-        // Validate no overlap for any of the specified days
-        validateNoOverlap(dayIds, request.getClassroomId(),
-                request.getStartTime(), request.getEndTime(), null);
-
         // Validate academic period dates (required by @NotNull in DTO)
         LocalDate startDate = request.getStartDate();
         LocalDate endDate = request.getEndDate();
         validateDateRange(startDate, endDate);
+
+        // Validate no overlap for any of the specified days (time + date range)
+        validateNoOverlap(dayIds, request.getClassroomId(),
+                request.getStartTime(), request.getEndTime(), startDate, endDate, null);
 
         try {
             ClassHourEntity entity = ClassHourEntity.builder()
@@ -279,14 +254,17 @@ public class ClassHourServiceImpl implements ClassHourService {
         boolean scheduleChanged = request.getDayIds() != null
                 || request.getClassroomId() != null
                 || request.getStartTime() != null
-                || request.getEndTime() != null;
+                || request.getEndTime() != null
+                || request.getStartDate() != null
+                || request.getEndDate() != null;
 
         if (scheduleChanged) {
             List<UUID> currentDayIds = classHourToUpdate.getDays().stream()
                     .map(DayWeekEntity::getDayId)
                     .collect(Collectors.toList());
             UUID classroomId = classHourToUpdate.getClassroomId() != null ? classHourToUpdate.getClassroomId().getClassroomId() : null;
-            validateNoOverlap(currentDayIds, classroomId, startTime, endTime, id);
+            validateNoOverlap(currentDayIds, classroomId, startTime, endTime,
+                    classHourToUpdate.getStartDate(), classHourToUpdate.getEndDate(), id);
         }
 
         try {
@@ -363,20 +341,21 @@ public class ClassHourServiceImpl implements ClassHourService {
 
     private void validateNoOverlap(List<UUID> dayIds, UUID classroomId,
                                    LocalTime startTime, LocalTime endTime,
+                                   LocalDate startDate, LocalDate endDate,
                                    UUID excludeId) {
         List<ClassHourEntity> overlapping;
 
         if (excludeId != null) {
             overlapping = classHourRepository.findOverlappingHours(
-                    dayIds, classroomId, startTime, endTime, excludeId);
+                    dayIds, classroomId, startTime, endTime, startDate, endDate, excludeId);
         } else {
             overlapping = classHourRepository.findOverlappingHoursForCreate(
-                    dayIds, classroomId, startTime, endTime);
+                    dayIds, classroomId, startTime, endTime, startDate, endDate);
         }
 
         if (!overlapping.isEmpty()) {
-            log.warn("Schedule overlap detected for classroom {} on days {} between {} and {}",
-                    classroomId, dayIds, startTime, endTime);
+            log.warn("Schedule overlap detected for classroom {} on days {} between {} and {} ({} to {})",
+                    classroomId, dayIds, startTime, endTime, startDate, endDate);
             throw new IllegalArgumentException(
                     "The classroom is already occupied on the specified days and time range.");
         }

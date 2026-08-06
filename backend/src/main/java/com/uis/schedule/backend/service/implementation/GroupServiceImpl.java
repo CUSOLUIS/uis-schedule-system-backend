@@ -58,79 +58,49 @@ public class GroupServiceImpl implements GroupService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<GroupListDTO> listGroups(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<GroupEntity> groupsPage = groupRepository.findAllByIsActiveTrue(pageable);
-            return convertToPaginatedResponse(groupsPage);
-        } catch (Exception e) {
-            log.error("Error retrieving active groups list", e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<GroupEntity> groupsPage = groupRepository.findAllByIsActiveTrue(pageable);
+        return convertToPaginatedResponse(groupsPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<GroupListDTO> listAllGroupsIncludingInactive(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<GroupEntity> groupsPage = groupRepository.findAll(pageable);
-            return convertToPaginatedResponse(groupsPage);
-        } catch (Exception e) {
-            log.error("Error retrieving all groups list", e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<GroupEntity> groupsPage = groupRepository.findAll(pageable);
+        return convertToPaginatedResponse(groupsPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<GroupListDTO> findByStatus(boolean status, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<GroupEntity> groupsPage = groupRepository.findAllByIsActive(status, pageable);
-            return convertToPaginatedResponse(groupsPage);
-        } catch (Exception e) {
-            log.error("Error retrieving groups by status: {}", status, e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<GroupEntity> groupsPage = groupRepository.findAllByIsActive(status, pageable);
+        return convertToPaginatedResponse(groupsPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<GroupListDTO> searchByName(String name, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<GroupEntity> groupsPage = groupRepository.findByNameContainingIgnoreCaseAndIsActiveTrue(name, pageable);
-            return convertToPaginatedResponse(groupsPage);
-        } catch (Exception e) {
-            log.error("Error searching groups by name: {}", name, e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<GroupEntity> groupsPage = groupRepository.findByNameContainingIgnoreCaseAndIsActiveTrue(name, pageable);
+        return convertToPaginatedResponse(groupsPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<GroupListDTO> findByClassroom(UUID classroomId, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<GroupEntity> groupsPage = groupRepository.findByClassroomId_ClassroomIdAndIsActiveTrue(classroomId, pageable);
-            return convertToPaginatedResponse(groupsPage);
-        } catch (Exception e) {
-            log.error("Error retrieving groups by classroom: {}", classroomId, e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<GroupEntity> groupsPage = groupRepository.findByClassroomId_ClassroomIdAndIsActiveTrue(classroomId, pageable);
+        return convertToPaginatedResponse(groupsPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<GroupListDTO> findBySubject(UUID subjectId, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<GroupEntity> groupsPage = groupRepository.findBySubjectId_SubjectIdAndIsActiveTrue(subjectId, pageable);
-            return convertToPaginatedResponse(groupsPage);
-        } catch (Exception e) {
-            log.error("Error retrieving groups by subject: {}", subjectId, e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<GroupEntity> groupsPage = groupRepository.findBySubjectId_SubjectIdAndIsActiveTrue(subjectId, pageable);
+        return convertToPaginatedResponse(groupsPage);
     }
 
     private PaginatedResponse<GroupListDTO> convertToPaginatedResponse(Page<GroupEntity> groupsPage) {
@@ -331,12 +301,11 @@ public class GroupServiceImpl implements GroupService {
      * ClassHour level via ClassHourRepository.findOverlappingHours().
      */
     private void checkClassroomAvailability(UUID classroomId, UUID excludeGroupId) {
-        Pageable pageable = PageRequest.of(0, 1);
-        Page<ClassHourEntity> existingHours = classHourRepository.findByClassroomId_ClassroomId(classroomId, pageable);
+        List<ClassHourEntity> existingHours = classHourRepository
+                .findAllByIsActiveTrueAndClassroomId_ClassroomId(classroomId);
 
-        boolean hasConflict = existingHours.getContent().stream()
-                .anyMatch(ch -> ch.isActive()
-                        && ch.getGroupId() != null
+        boolean hasConflict = existingHours.stream()
+                .anyMatch(ch -> ch.getGroupId() != null
                         && !ch.getGroupId().getGroupId().equals(excludeGroupId));
 
         if (hasConflict) {

@@ -38,40 +38,25 @@ public class ClassroomServiceImpl implements ClassroomService {
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassroomListDTO> listClassrooms(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<ClassroomEntity> classroomsPage = classroomRepository.findAllByIsActiveTrue(pageable);
-            return convertToPaginatedResponse(classroomsPage);
-        } catch (Exception e) {
-            log.error("Error retrieving active classrooms list", e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassroomEntity> classroomsPage = classroomRepository.findAllByIsActiveTrue(pageable);
+        return convertToPaginatedResponse(classroomsPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassroomListDTO> listAllClassroomsIncludingInactive(int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<ClassroomEntity> classroomsPage = classroomRepository.findAll(pageable);
-            return convertToPaginatedResponse(classroomsPage);
-        } catch (Exception e) {
-            log.error("Error retrieving all classrooms list", e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassroomEntity> classroomsPage = classroomRepository.findAll(pageable);
+        return convertToPaginatedResponse(classroomsPage);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassroomListDTO> findByStatus(boolean status, int page, int size) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<ClassroomEntity> classroomsPage = classroomRepository.findAllByIsActive(status, pageable);
-            return convertToPaginatedResponse(classroomsPage);
-        } catch (Exception e) {
-            log.error("Error retrieving classrooms by status: {}", status, e);
-            return new PaginatedResponse<>();
-        }
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassroomEntity> classroomsPage = classroomRepository.findAllByIsActive(status, pageable);
+        return convertToPaginatedResponse(classroomsPage);
     }
 
     private PaginatedResponse<ClassroomListDTO> convertToPaginatedResponse(Page<ClassroomEntity> classroomsPage) {
@@ -156,6 +141,9 @@ public class ClassroomServiceImpl implements ClassroomService {
             log.info("Classroom updated successfully with ID: {}", id);
             return ClassroomMapper.entityToResponse(updatedClassroom);
 
+        } catch (DataIntegrityViolationException e) {
+            log.error("Data integrity violation while updating classroom: {}", id, e);
+            throw new IllegalArgumentException("Classroom update failed: A classroom with the same attributes may already exist.");
         } catch (Exception e) {
             log.error("Unexpected error while updating classroom: {}", id, e);
             throw new RuntimeException("Failed to update classroom", e);
