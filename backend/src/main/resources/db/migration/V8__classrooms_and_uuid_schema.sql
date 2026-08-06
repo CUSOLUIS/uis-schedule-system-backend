@@ -1,5 +1,5 @@
 -- =========================================================
--- V7: Classrooms & UUID schema
+-- V8: Classrooms & UUID schema
 -- =========================================================
 -- Flattened migration that consolidates:
 --   - classroom.number type fix  (integer → varchar(50))
@@ -22,9 +22,11 @@ ALTER TABLE public.classroom ADD COLUMN is_active boolean NOT NULL DEFAULT true;
 
 -- =========================================================
 -- 2. GROUPS: add classroom_id FK & soft-delete
+--    (classroom_id is still bigint at this point)
 -- =========================================================
-ALTER TABLE public.groups ADD COLUMN classroom_id uuid;
-ALTER TABLE public.classroom ALTER COLUMN classroom_id TYPE uuid USING gen_random_uuid();
+ALTER TABLE public.groups ADD COLUMN classroom_id bigint;
+ALTER TABLE public.groups ADD CONSTRAINT fk_groups_classroom
+    FOREIGN KEY (classroom_id) REFERENCES public.classroom(classroom_id);
 ALTER TABLE public.groups ADD COLUMN is_active boolean NOT NULL DEFAULT true;
 
 -- =========================================================
@@ -48,27 +50,27 @@ ALTER TABLE public.class_hour ADD COLUMN end_date date NOT NULL DEFAULT (CURRENT
 
 -- =========================================================
 -- 4. CLASS_HOUR_DAY join table (ManyToMany class_hour ↔ day_of_week)
+--    Created with correct bigint types now; will be converted
+--    to uuid alongside other tables in section 6.
 -- =========================================================
--- 4a. Migrate existing day_id data before dropping the column
+CREATE TABLE IF NOT EXISTS public.class_hour_day (
+    class_hour_id bigint NOT NULL,
+    day_id        bigint NOT NULL,
+    PRIMARY KEY (class_hour_id, day_id)
+);
+
+-- Migrate existing day_id data into the join table
 INSERT INTO public.class_hour_day (class_hour_id, day_id)
 SELECT ch.class_hour_id, ch.day_id
 FROM public.class_hour ch
 WHERE ch.day_id IS NOT NULL;
 
--- 4b. Drop single-day column from class_hour
+-- Drop the old single-day column from class_hour
 ALTER TABLE public.class_hour DROP COLUMN IF EXISTS day_id;
-
--- 4c. Create join table (idempotent with IF NOT EXISTS)
-CREATE TABLE IF NOT EXISTS public.class_hour_day (
-    class_hour_id uuid NOT NULL,
-    day_id        uuid NOT NULL,
-    PRIMARY KEY (class_hour_id, day_id)
-);
 
 -- =========================================================
 -- 5. DAY_OF_WEEK: add "domingo" & lowercase all names
 -- =========================================================
--- (day_id is still bigint at this point)
 INSERT INTO public.day_of_week (day_id, name)
 VALUES (7, 'domingo')
 ON CONFLICT DO NOTHING;
@@ -77,10 +79,10 @@ UPDATE public.day_of_week SET name = LOWER(name) WHERE name != LOWER(name);
 
 -- =========================================================
 -- 6. UUID MIGRATION — convert all bigint PKs/FKs to uuid
---    Strategy: add-col / drop-col / rename per table
+--    Strategy: DROP IDENTITY → add-col → drop-col → rename
 -- =========================================================
 
--- ─── Drop ALL existing foreign-key constraints ──────────
+-- ─── 6.0 Drop ALL existing foreign-key constraints ─────
 ALTER TABLE public.audit_log DROP CONSTRAINT IF EXISTS fkk4alalwu62gj4tfbgfefll3tu;
 ALTER TABLE public.school    DROP CONSTRAINT IF EXISTS fkflxxoc9bllhsatkm9f3qqv19f;
 ALTER TABLE public.subject   DROP CONSTRAINT IF EXISTS fkg9ahxfklvfv5o2d8ejweibfo8;
@@ -116,7 +118,35 @@ ALTER TABLE public.teacher   DROP CONSTRAINT IF EXISTS fk_teacher_user;
 ALTER TABLE public.user_roles DROP CONSTRAINT IF EXISTS fk_user_roles_user;
 ALTER TABLE public.user_roles DROP CONSTRAINT IF EXISTS fk_user_roles_role;
 
--- ─── 6.1 Leaf tables (no incoming FKs) ──────────────────
+-- ─── 6.1 Drop IDENTITY from all PK columns that have it ──
+-- PostgreSQL 16 requires removing IDENTITY before dropping
+-- or altering the type of the column.
+ALTER TABLE public.day_of_week ALTER COLUMN day_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.day_of_week ALTER COLUMN day_id DROP DEFAULT;
+ALTER TABLE public.faculty ALTER COLUMN faculty_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.faculty ALTER COLUMN faculty_id DROP DEFAULT;
+ALTER TABLE public.academic_period ALTER COLUMN period_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.academic_period ALTER COLUMN period_id DROP DEFAULT;
+ALTER TABLE public.classroom ALTER COLUMN classroom_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.classroom ALTER COLUMN classroom_id DROP DEFAULT;
+ALTER TABLE public.audit_log ALTER COLUMN audit_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.audit_log ALTER COLUMN audit_id DROP DEFAULT;
+ALTER TABLE public.school ALTER COLUMN school_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.school ALTER COLUMN school_id DROP DEFAULT;
+ALTER TABLE public.subject ALTER COLUMN subject_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.subject ALTER COLUMN subject_id DROP DEFAULT;
+ALTER TABLE public.teacher ALTER COLUMN teacher_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.teacher ALTER COLUMN teacher_id DROP DEFAULT;
+ALTER TABLE public.groups ALTER COLUMN group_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.groups ALTER COLUMN group_id DROP DEFAULT;
+ALTER TABLE public.class ALTER COLUMN class_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.class ALTER COLUMN class_id DROP DEFAULT;
+ALTER TABLE public.class_hour ALTER COLUMN class_hour_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.class_hour ALTER COLUMN class_hour_id DROP DEFAULT;
+ALTER TABLE public.schedule ALTER COLUMN schedule_id DROP IDENTITY IF EXISTS;
+ALTER TABLE public.schedule ALTER COLUMN schedule_id DROP DEFAULT;
+
+-- ─── 6.2 Leaf tables (no incoming FKs) ──────────────────
 
 -- day_of_week
 ALTER TABLE public.day_of_week ADD COLUMN _uuid uuid DEFAULT gen_random_uuid();
@@ -153,7 +183,7 @@ ALTER TABLE public.audit_log DROP COLUMN audit_id;
 ALTER TABLE public.audit_log RENAME COLUMN _uuid TO audit_id;
 ALTER TABLE public.audit_log ADD PRIMARY KEY (audit_id);
 
--- ─── 6.2 Tables with FK dependencies ───────────────────
+-- ─── 6.3 Tables with FK dependencies ───────────────────
 
 -- school (FK → faculty)
 ALTER TABLE public.school ADD COLUMN _uuid uuid DEFAULT gen_random_uuid();
@@ -187,6 +217,7 @@ ALTER TABLE public.groups ADD PRIMARY KEY (group_id);
 ALTER TABLE public.groups ALTER COLUMN teacher_id TYPE uuid USING gen_random_uuid();
 ALTER TABLE public.groups ALTER COLUMN period_id TYPE uuid USING gen_random_uuid();
 ALTER TABLE public.groups ALTER COLUMN subject_id TYPE uuid USING gen_random_uuid();
+ALTER TABLE public.groups ALTER COLUMN classroom_id TYPE uuid USING gen_random_uuid();
 
 -- class (FK → user [already uuid], group)
 ALTER TABLE public.class ADD COLUMN _uuid uuid DEFAULT gen_random_uuid();
@@ -203,6 +234,7 @@ ALTER TABLE public.class_hour DROP COLUMN class_hour_id;
 ALTER TABLE public.class_hour RENAME COLUMN _uuid TO class_hour_id;
 ALTER TABLE public.class_hour ADD PRIMARY KEY (class_hour_id);
 ALTER TABLE public.class_hour ALTER COLUMN group_id TYPE uuid USING gen_random_uuid();
+ALTER TABLE public.class_hour ALTER COLUMN classroom_id TYPE uuid USING gen_random_uuid();
 
 -- class_hour_day (join table — both columns now uuid)
 ALTER TABLE public.class_hour_day ALTER COLUMN class_hour_id TYPE uuid USING gen_random_uuid();
