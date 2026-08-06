@@ -12,12 +12,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Collections;
 import java.util.List;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.LocalDateTime;
 
 /**
  * Centralized exception handler for all controllers.
@@ -37,8 +36,8 @@ public class GlobalExceptionHandler {
 
     // ─── 404 — Resource not found ────────────────────
 
-    @ExceptionHandler(ClassroomNotFoundException.class)
-    public ResponseEntity<ApiResponse<Object>> handleClassroomNotFoundException(ClassroomNotFoundException ex) {
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUserNotFoundException(UserNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
@@ -47,23 +46,23 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(ClassroomNotFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleClassroomNotFoundException(ClassroomNotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     @ExceptionHandler(ClassHourNotFoundException.class)
     public ResponseEntity<ApiResponse<Object>> handleClassHourNotFoundException(ClassHourNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ApiResponse<Object>> handleUserNotFoundException(UserNotFoundException ex) {
+    @ExceptionHandler(InvitationNotFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInvitationNotFoundException(InvitationNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(RoleNotFoundException.class)
     public ResponseEntity<ApiResponse<Object>> handleRoleNotFoundException(RoleNotFoundException ex) {
-        return build(HttpStatus.NOT_FOUND, ex.getMessage());
-    }
-
-    @ExceptionHandler(InvitationNotFoundException.class)
-    public ResponseEntity<ApiResponse<Object>> handleInvitationNotFoundException(InvitationNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
@@ -101,7 +100,6 @@ public class GlobalExceptionHandler {
                     .reduce((a, b) -> a + "." + b)
                     .orElse("unknown");
 
-            // Detect the target type to suggest the expected format
             Class<?> targetType = ife.getTargetType();
             String formatHint = getFormatHint(targetType);
             detail = "Invalid value for field '" + fieldPath + "'" + formatHint;
@@ -116,11 +114,23 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "Bad credentials");
     }
 
-    // ─── 403 — Access denied (handled by Security too, but as a safety net) ──
+    // ─── 403 — Access denied ──────────────────────
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Object>> handleAccessDeniedException(AccessDeniedException ex) {
         return build(HttpStatus.FORBIDDEN, "You do not have sufficient permissions to perform this action");
+    }
+
+    // ─── 409 — Conflict ───────────────────────────
+
+    @ExceptionHandler(InvitationConflictException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInvitationConflictException(InvitationConflictException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     // ─── 500 — Catch-all (never expose internal details) ──

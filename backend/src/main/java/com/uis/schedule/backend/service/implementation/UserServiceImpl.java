@@ -16,7 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.uis.schedule.backend.service.exception.UserAlreadyExistsException;
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
 import com.uis.schedule.backend.persistence.entity.PasswordResetTokenEntity;
 import com.uis.schedule.backend.persistence.entity.RefreshTokenEntity;
@@ -298,8 +298,7 @@ public class UserServiceImpl implements UserService {
 
     log.info("Soft deleting user with ID: {}", id);
 
-    // We use findById here to see if user exists, regardless of current enable
-    // status
+    // We use findById here to see if user exists, regardless of current enable status
     UserEntity user = userRepository.findById(id)
         .orElseThrow(() -> {
           log.error("User not found with ID: {}", id);
@@ -330,58 +329,49 @@ public class UserServiceImpl implements UserService {
     String email = authSignupRequest.email().toLowerCase();
     log.info("Registro interno de un usuario {}.", email);
 
-    try {
-      String username = (authSignupRequest.firstName().substring(0, 1) + authSignupRequest.lastName())
-          .toLowerCase();
+    String username = (authSignupRequest.firstName().substring(0, 1) + authSignupRequest.lastName())
+        .toLowerCase();
 
-      UserEntity user = userRepository
-          .findUserEntityByEmailOrUsername(email, username)
-          .orElse(null);
+    UserEntity existingUser = userRepository
+        .findUserEntityByEmailOrUsername(email, username)
+        .orElse(null);
 
-      if (Objects.isNull(user)) {
-        UserEntity newUser = new UserEntity();
-        newUser.setFirstName(authSignupRequest.firstName());
-        newUser.setLastName(authSignupRequest.lastName());
-        newUser.setUsername(username);
-        newUser.setEmail(email);
-        String encodedPassword = passwordEncoder.encode(authSignupRequest.password());
-        log.info("Encoded password: {}", encodedPassword);
-        newUser.setPassword(encodedPassword);
-        newUser.setEnable(true);
-        newUser.setAccountNoExpired(true);
-        newUser.setAccountNoLocked(true);
-        newUser.setCredentialNoExpired(true);
-
-        java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
-        roleRepository.findByName("USER").ifPresent(roles::add);
-        newUser.setRoles(roles);
-
-        userRepository.save(newUser);
-        log.info("User registered successfully: {}", authSignupRequest.email());
-
-        // No roles assigned yet in this simplified signup, but let's assume default or
-        // handle null
-        java.util.Set<String> rolesSet = newUser.getRoles().stream()
-            .map(RoleEntity::getName)
-            .collect(Collectors.toSet());
-
-        String token = jwtUtil.generateToken(
-            newUser.getUserId(),
-            newUser.getUsername(),
-            newUser.getEmail(),
-            rolesSet,
-            newUser.isEnable());
-        String refreshToken = issueRefreshToken(newUser);
-
-        return new AuthResponse(token, refreshToken, "User registered successfully");
-      } else {
-        log.warn("Email already registered or username taken: {}", authSignupRequest.email());
-        throw new IllegalArgumentException("Email already registered or username taken");
-      }
-    } catch (Exception ex) {
-      log.error("Error during user signup", ex);
-      throw new RuntimeException("Failed to register user");
+    if (existingUser != null) {
+      log.warn("Email already registered or username taken: {}", authSignupRequest.email());
+      throw new UserAlreadyExistsException("El correo o el nombre de usuario ya están en uso");
     }
+
+    UserEntity newUser = new UserEntity();
+    newUser.setFirstName(authSignupRequest.firstName());
+    newUser.setLastName(authSignupRequest.lastName());
+    newUser.setUsername(username);
+    newUser.setEmail(email);
+    newUser.setPassword(passwordEncoder.encode(authSignupRequest.password()));
+    newUser.setEnable(true);
+    newUser.setAccountNoExpired(true);
+    newUser.setAccountNoLocked(true);
+    newUser.setCredentialNoExpired(true);
+
+    java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+    roleRepository.findByName("USER").ifPresent(roles::add);
+    newUser.setRoles(roles);
+
+    userRepository.save(newUser);
+    log.info("User registered successfully: {}", authSignupRequest.email());
+
+    java.util.Set<String> rolesSet = newUser.getRoles().stream()
+        .map(RoleEntity::getName)
+        .collect(Collectors.toSet());
+
+    String token = jwtUtil.generateToken(
+        newUser.getUserId(),
+        newUser.getUsername(),
+        newUser.getEmail(),
+        rolesSet,
+        newUser.isEnable());
+    String refreshToken = issueRefreshToken(newUser);
+
+    return new AuthResponse(token, refreshToken, "User registered successfully");
   }
 
   @Override
@@ -389,45 +379,34 @@ public class UserServiceImpl implements UserService {
     String normalizedEmail = email.toLowerCase();
     log.info("Login attempt for email: {}", normalizedEmail);
 
-    try {
-      Authentication authentication = authenticationManager.authenticate(
-          new UsernamePasswordAuthenticationToken(normalizedEmail, password));
+    Authentication authentication = authenticationManager.authenticate(
+        new UsernamePasswordAuthenticationToken(normalizedEmail, password));
 
-      if (!authentication.isAuthenticated()) {
-        throw new IllegalArgumentException("Bad credentials");
-      }
+    String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
+        .getUsername();
 
-      String username = ((org.springframework.security.core.userdetails.User) authentication.getPrincipal())
-          .getUsername();
+    UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
+        .orElseThrow(() -> {
+          log.error("Authenticated user not found in database: {}", username);
+          return new UserNotFoundException("Authenticated user not found in database: " + username);
+        });
 
-      UserEntity user = userRepository.findUserEntityByEmailOrUsername(username, username)
-          .orElseThrow(() -> {
-            log.error("Authenticated user not found in database: {}", username);
-            return new UserNotFoundException("Authenticated user not found in database: " + username);
-          });
+    java.util.Set<String> rolesSet = user.getRoles().stream()
+        .map(RoleEntity::getName)
+        .collect(Collectors.toSet());
 
-      java.util.Set<String> rolesSet = user.getRoles().stream()
-          .map(RoleEntity::getName)
-          .collect(Collectors.toSet());
+    String token = jwtUtil.generateToken(
+        user.getUserId(),
+        user.getUsername(),
+        user.getEmail(),
+        rolesSet,
+        user.isEnable());
 
-      String token = jwtUtil.generateToken(
-          user.getUserId(),
-          user.getUsername(),
-          user.getEmail(),
-          rolesSet,
-          user.isEnable());
-
-      String refreshToken = issueRefreshToken(user);
-
-      log.info("Login successful for user: {} with roles: {}", username, rolesSet);
-      return new AuthResponse(token, refreshToken, "Login successful");
-    } catch (IllegalArgumentException e) {
-      throw e;
-    } catch (Exception e) {
-      log.error("Login failed for email: {}", normalizedEmail, e);
-      throw new IllegalArgumentException("Bad credentials");
-    }
+    log.info("Login successful for user: {} with roles: {}", username, rolesSet);
+    String refreshToken = issueRefreshToken(user);
+    return new AuthResponse(token, refreshToken, "Login successful");
   }
+
   /**
    * Genera un refresh token para el usuario y lo persiste como registro
    * activo ("whitelist"), necesario para poder validarlo/rotarlo/revocarlo
