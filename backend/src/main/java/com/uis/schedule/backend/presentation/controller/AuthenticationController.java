@@ -53,11 +53,10 @@ public class AuthenticationController {
         .body(ApiResponse.success(authResponse, "User registered successfully"));
   }
 
-  @Operation(summary = "Authenticate a user", description = "Logs in a user with email/username and password, and returns a JWT token.")
+  @Operation(summary = "Cerrar sesión", description = "Invalida en el servidor el token JWT del usuario autenticado. Cualquier solicitud posterior con ese token será rechazada con 401. Si se incluye el refreshToken en el body, también se revoca.")
   @ApiResponses(value = {
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Login successful"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Bad credentials"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found")
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Sesión cerrada correctamente"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "No autenticado o token inválido")
   })
   @PostMapping("/login")
   public ResponseEntity<ApiResponse<AuthResponse>> login(
@@ -137,7 +136,7 @@ public class AuthenticationController {
   @Operation(summary = "Renovar access token", description = "Emite un nuevo access token (y rota el refresh token) a partir de un refresh token válido, sin requerir volver a autenticarse con credenciales.")
   @ApiResponses(value = {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Token renovado correctamente"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Refresh token inválido, revocado o expirado")
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Refresh token inválido, revocado o expirado")
   })
   @PostMapping("/refresh")
   public ResponseEntity<ApiResponse<AuthResponse>> refresh(

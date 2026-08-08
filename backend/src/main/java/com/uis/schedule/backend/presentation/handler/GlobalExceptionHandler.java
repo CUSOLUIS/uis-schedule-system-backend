@@ -7,7 +7,6 @@ import com.uis.schedule.backend.service.exception.InvitationNotFoundException;
 import com.uis.schedule.backend.service.exception.InvitationConflictException;
 import com.uis.schedule.backend.service.exception.RoleNotFoundException;
 import com.uis.schedule.backend.service.exception.UserAlreadyExistsException;
-import com.uis.schedule.backend.service.exception.UserAlreadyExistsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -15,9 +14,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -102,9 +104,10 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Object>> handleGeneralException(Exception ex) {
+    log.error("Unhandled exception", ex);
     String message = "An internal server error occurred.";
     return new ResponseEntity<>(
-        ApiResponse.error(message, Collections.singletonList(ex.getMessage())),
+        ApiResponse.error(message, Collections.singletonList(message)),
         HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
