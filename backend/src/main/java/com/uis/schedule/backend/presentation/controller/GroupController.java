@@ -45,14 +45,14 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(groups, "Active groups retrieved successfully"));
     }
 
-    @Operation(summary = "List all groups including inactive", description = "Retrieves a paginated list of all groups. Requires ADMINISTRADOR role.")
+    @Operation(summary = "List all groups including inactive", description = "Retrieves a paginated list of all groups. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved all groups"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have privileges"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<PaginatedResponse<GroupListDTO>>> listAllWithInactive(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -60,14 +60,14 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(groups, "All groups retrieved successfully"));
     }
 
-    @Operation(summary = "Get groups by status", description = "Retrieves a paginated list of groups filtered by status. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Get groups by status", description = "Retrieves a paginated list of groups filtered by status. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved groups by status"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have privileges"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<PaginatedResponse<GroupListDTO>>> getByStatus(
             @PathVariable boolean status,
             @RequestParam(defaultValue = "0") int page,
@@ -139,31 +139,31 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(group, "Group retrieved successfully"));
     }
 
-    @Operation(summary = "Create a new group", description = "Creates a new group. Requires ADMINISTRADOR role. The group capacity cannot exceed the classroom max capacity.")
+    @Operation(summary = "Create a new group", description = "Creates a new group. Requires ADMINISTRATOR role. The group capacity cannot exceed the classroom max capacity.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Group created successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid group data or capacity exceeds classroom capacity"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRADOR role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<GroupResponse>> createGroup(@Valid @RequestBody CreateGroupRequest request) {
         GroupResponse createdGroup = groupService.createGroup(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(createdGroup, "Group created successfully"));
     }
 
-    @Operation(summary = "Update an existing group", description = "Updates an existing group. Requires ADMINISTRADOR role. The group capacity cannot exceed the classroom max capacity.")
+    @Operation(summary = "Update an existing group", description = "Updates an existing group. Requires ADMINISTRATOR role. The group capacity cannot exceed the classroom max capacity.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Group updated successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid group data or capacity exceeds classroom capacity"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRADOR role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Group not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<GroupResponse>> updateGroup(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateGroupRequest request) {
@@ -171,15 +171,15 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(updatedGroup, "Group updated successfully"));
     }
 
-    @Operation(summary = "Delete a group", description = "Soft deletes a group by ID. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Delete a group", description = "Soft deletes a group by ID. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Group deleted successfully"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRADOR role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Group not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteGroup(@PathVariable UUID id) {
         groupService.deleteGroup(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Group deleted successfully (soft delete)"));

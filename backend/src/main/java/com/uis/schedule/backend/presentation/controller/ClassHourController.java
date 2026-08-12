@@ -45,14 +45,14 @@ public class ClassHourController {
         return ResponseEntity.ok(ApiResponse.success(classHours, "Active class hours retrieved successfully"));
     }
 
-    @Operation(summary = "List all class hours including inactive", description = "Retrieves a paginated list of all class hours. Requires ADMINISTRADOR role.")
+    @Operation(summary = "List all class hours including inactive", description = "Retrieves a paginated list of all class hours. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved all class hours"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have privileges"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<PaginatedResponse<ClassHourListDTO>>> listAllWithInactive(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -60,14 +60,14 @@ public class ClassHourController {
         return ResponseEntity.ok(ApiResponse.success(classHours, "All class hours retrieved successfully"));
     }
 
-    @Operation(summary = "Get class hours by status", description = "Retrieves a paginated list of class hours filtered by status. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Get class hours by status", description = "Retrieves a paginated list of class hours filtered by status. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved class hours by status"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have privileges"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<PaginatedResponse<ClassHourListDTO>>> getByStatus(
             @PathVariable boolean status,
             @RequestParam(defaultValue = "0") int page,
@@ -123,31 +123,31 @@ public class ClassHourController {
         return ResponseEntity.ok(ApiResponse.success(classHours, "Class hours retrieved successfully by classroom"));
     }
 
-    @Operation(summary = "Create a new class hour", description = "Creates a new class hour. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Create a new class hour", description = "Creates a new class hour. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Class hour created successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid class hour data or referenced entity not found/disabled"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRADOR role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<ClassHourResponse>> createClassHour(@Valid @RequestBody CreateClassHourRequest request) {
         ClassHourResponse createdClassHour = classHourService.createClassHour(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(createdClassHour, "Class hour created successfully"));
     }
 
-    @Operation(summary = "Update an existing class hour", description = "Updates an existing class hour. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Update an existing class hour", description = "Updates an existing class hour. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Class hour updated successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid class hour data or referenced entity not found/disabled"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRADOR role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Class hour not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<ClassHourResponse>> updateClassHour(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateClassHourRequest request) {
@@ -155,15 +155,15 @@ public class ClassHourController {
         return ResponseEntity.ok(ApiResponse.success(updatedClassHour, "Class hour updated successfully"));
     }
 
-    @Operation(summary = "Delete a class hour", description = "Soft deletes a class hour by ID. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Delete a class hour", description = "Soft deletes a class hour by ID. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Class hour deleted successfully"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRADOR role"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Class hour not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     public ResponseEntity<ApiResponse<Void>> deleteClassHour(@PathVariable UUID id) {
         classHourService.deleteClassHour(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Class hour deleted successfully (soft delete)"));

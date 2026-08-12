@@ -36,14 +36,14 @@ public class InvitationController {
         this.userRepository = userRepository;
     }
 
-    @Operation(summary = "Create a new invitation", description = "Creates a new invitation for a user. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Create a new invitation", description = "Creates a new invitation for a user. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Invitation created successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid invitation data or email already invited"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have privileges"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PostMapping
     public ResponseEntity<ApiResponse<InvitationResponse>> createInvitation(
             @Valid @RequestBody CreateInvitationRequest request,
@@ -85,20 +85,20 @@ public class InvitationController {
         return ResponseEntity.ok(ApiResponse.success(response, "Registration completed successfully"));
     }
 
-    @Operation(summary = "Get pending invitations", description = "Retrieves all pending invitations. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Get pending invitations", description = "Retrieves all pending invitations. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved pending invitations"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have privileges"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @GetMapping("/pending")
     public ResponseEntity<ApiResponse<List<InvitationResponse>>> getPendingApprovals() {
         List<InvitationResponse> pending = invitationService.getPendingApprovals();
         return ResponseEntity.ok(ApiResponse.success(pending, "Pending invitations retrieved successfully"));
     }
 
-    @Operation(summary = "Approve an invitation", description = "Approves a pending invitation. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Approve an invitation", description = "Approves a pending invitation. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Invitation approved successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid approval data"),
@@ -106,7 +106,7 @@ public class InvitationController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Invitation not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PutMapping("/{invitationId}/approve")
     public ResponseEntity<ApiResponse<InvitationResponse>> approveInvitation(
             @PathVariable UUID invitationId,
@@ -115,14 +115,14 @@ public class InvitationController {
         return ResponseEntity.ok(ApiResponse.success(response, "Invitation approved successfully"));
     }
 
-    @Operation(summary = "Reject an invitation", description = "Rejects a pending invitation. Requires ADMINISTRADOR role.")
+    @Operation(summary = "Reject an invitation", description = "Rejects a pending invitation. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Invitation rejected successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have privileges"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Invitation not found"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
     @PutMapping("/{invitationId}/reject")
     public ResponseEntity<ApiResponse<InvitationResponse>> rejectInvitation(@PathVariable UUID invitationId) {
         InvitationResponse response = invitationService.rejectInvitation(invitationId);
