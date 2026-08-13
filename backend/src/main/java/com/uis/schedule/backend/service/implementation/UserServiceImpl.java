@@ -36,7 +36,6 @@ import com.uis.schedule.backend.presentation.dto.UserDetailDTO;
 import com.uis.schedule.backend.presentation.dto.UserListDTO;
 import com.uis.schedule.backend.presentation.dto.UserResponse;
 import com.uis.schedule.backend.service.exception.InvalidTokenException;
-import com.uis.schedule.backend.service.exception.UserAlreadyExistsException;
 import com.uis.schedule.backend.persistence.repository.RevokedTokenRepository;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.UserService;
@@ -299,8 +298,7 @@ public class UserServiceImpl implements UserService {
 
     log.info("Soft deleting user with ID: {}", id);
 
-    // We use findById here to see if user exists, regardless of current enable
-    // status
+    // We use findById here to see if user exists, regardless of current enable status
     UserEntity user = userRepository.findById(id)
         .orElseThrow(() -> {
           log.error("User not found with ID: {}", id);

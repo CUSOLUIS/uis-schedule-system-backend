@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.presentation.dto;
 
 import java.time.LocalTime;
+import java.util.UUID;
 
 import lombok.*;
 
@@ -8,7 +9,7 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 public class ClassHourDTO {
-    private Long classHourId;
+    private UUID classHourId;
 	private DayWeekDTO day;
 	private LocalTime hour;
 	private GroupDTO group;
