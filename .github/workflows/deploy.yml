@@ -29,3 +29,10 @@ jobs:
           docker-compose rm -f backend-spring-api
           docker-compose build --no-cache backend-spring-api
           docker-compose up -d --no-deps backend-spring-api
+
+      - name: Limpieza post-deploy de Docker
+        if: always()
+        run: |
+          echo "=== Limpieza post-deploy backend ==="
+          docker system prune -f
+          docker builder prune -f --filter until=24h || docker buildx prune -f --filter until=24h || true

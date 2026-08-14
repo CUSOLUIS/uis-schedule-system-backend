@@ -24,3 +24,10 @@ jobs:
       - name: Ejecutar tests
         working-directory: ./backend
         run: mvn test -Dmaven.compiler.release=17
+
+      - name: Cleanup build cache and dangling layers
+        if: always()
+        run: |
+          echo "=== Limpieza post-build del backend ==="
+          docker system prune -f
+          docker builder prune -f --filter until=24h || docker buildx prune -f --filter until=24h || true
