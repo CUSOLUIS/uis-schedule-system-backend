@@ -127,6 +127,7 @@ public class ClassHourController {
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Class hour created successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid class hour data or referenced entity not found/disabled"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Classroom is already occupied in the requested slot"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })

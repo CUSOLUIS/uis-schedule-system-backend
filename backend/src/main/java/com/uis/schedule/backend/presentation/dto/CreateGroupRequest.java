@@ -28,7 +28,6 @@ public class CreateGroupRequest {
     @Min(value = 1, message = "Capacity must be at least 1")
     private Integer capacity;
 
-    @NotNull(message = "Classroom ID is required")
     private UUID classroomId;
 
     private UUID teacherId;

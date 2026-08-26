@@ -142,7 +142,9 @@ public class GroupController {
     @Operation(summary = "Create a new group", description = "Creates a new group. Requires ADMINISTRATOR role. The group capacity cannot exceed the classroom max capacity.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Group created successfully"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid group data or capacity exceeds classroom capacity"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid group data"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "A group with the same name, subject and period already exists"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "Group capacity exceeds classroom capacity"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })

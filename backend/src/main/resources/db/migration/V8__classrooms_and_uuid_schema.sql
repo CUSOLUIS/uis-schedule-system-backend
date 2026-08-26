@@ -405,3 +405,24 @@ ALTER TABLE public.user_roles ADD CONSTRAINT fk_user_roles_user
 -- user_roles → roles
 ALTER TABLE public.user_roles ADD CONSTRAINT fk_user_roles_role
     FOREIGN KEY (role_guid) REFERENCES public.roles(role_guid);
+
+-- =========================================================
+-- 9. UNIQUE INDEXES — active classrooms and groups
+--    Partial indexes allow recreating a record after soft-delete.
+-- =========================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_classroom_number_campus_building_active
+    ON public.classroom (
+        LOWER(number),
+        LOWER(COALESCE(campus, '')),
+        LOWER(COALESCE(building, ''))
+    )
+    WHERE is_active = true;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_groups_name_subject_period_active
+    ON public.groups (
+        LOWER(group_name),
+        subject_id,
+        period_id
+    )
+    WHERE is_active = true;

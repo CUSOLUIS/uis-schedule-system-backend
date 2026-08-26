@@ -16,13 +16,21 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
 
     Page<ClassHourEntity> findAllByIsActiveTrue(Pageable pageable);
 
+    Page<ClassHourEntity> findAllByIsActiveTrueAndGroupId_IsActiveTrue(Pageable pageable);
+
     Page<ClassHourEntity> findAllByIsActive(boolean isActive, Pageable pageable);
 
     Page<ClassHourEntity> findByGroupId_GroupId(UUID groupId, Pageable pageable);
 
+    Page<ClassHourEntity> findByGroupId_GroupIdAndIsActiveTrueAndGroupId_IsActiveTrue(UUID groupId, Pageable pageable);
+
     Page<ClassHourEntity> findByClassroomId_ClassroomId(UUID classroomId, Pageable pageable);
 
+    Page<ClassHourEntity> findByClassroomId_ClassroomIdAndIsActiveTrueAndGroupId_IsActiveTrue(UUID classroomId, Pageable pageable);
+
     List<ClassHourEntity> findAllByIsActiveTrueAndClassroomId_ClassroomId(UUID classroomId);
+
+    List<ClassHourEntity> findAllByGroupId_GroupIdAndIsActiveTrue(UUID groupId);
 
     /**
      * Find active class hours that overlap with the given time range and date range
@@ -37,6 +45,7 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
            "WHERE d.dayId IN :dayIds " +
            "AND ch.classroomId.classroomId = :classroomId " +
            "AND ch.isActive = true " +
+           "AND (ch.groupId IS NULL OR ch.groupId.isActive = true) " +
            "AND ch.classHourId <> :excludeId " +
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime " +
@@ -62,6 +71,7 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
            "WHERE d.dayId IN :dayIds " +
            "AND ch.classroomId.classroomId = :classroomId " +
            "AND ch.isActive = true " +
+           "AND (ch.groupId IS NULL OR ch.groupId.isActive = true) " +
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime " +
            "AND ch.startDate <= :endDate " +

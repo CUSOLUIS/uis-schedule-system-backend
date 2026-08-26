@@ -3,6 +3,7 @@ package com.uis.schedule.backend.presentation.handler;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.uis.schedule.backend.presentation.dto.ApiResponse;
 import com.uis.schedule.backend.service.exception.*;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -131,6 +132,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Object>> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler({
+            GroupAlreadyExistsException.class,
+            ClassroomAlreadyExistsException.class,
+            ClassroomHasActiveGroupsException.class,
+            ScheduleConflictException.class
+    })
+    public ResponseEntity<ApiResponse<Object>> handleConflictExceptions(RuntimeException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        return build(HttpStatus.CONFLICT, "The operation violates a uniqueness or integrity constraint.");
+    }
+
+    // ─── 422 — Unprocessable entity (business rules) ──
+
+    @ExceptionHandler(CapacityConstraintException.class)
+    public ResponseEntity<ApiResponse<Object>> handleCapacityConstraintException(CapacityConstraintException ex) {
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
     }
 
     // ─── 500 — Catch-all (never expose internal details) ──
