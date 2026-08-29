@@ -24,3 +24,40 @@ jobs:
       - name: Ejecutar tests
         working-directory: ./backend
         run: mvn test -Dmaven.compiler.release=17
+
+      - name: Cleanup build cache and dangling layers
+        if: always()
+        run: |
+          echo "=== ESPACIO EN DISCO Y DOCKER ANTES DE LA LIMPIEZA ==="
+          docker system df
+          df -h /
+
+          CURRENT_SHA="${{ github.sha }}"
+          echo "SHA de ejecución actual: $CURRENT_SHA"
+
+          echo "=== 1. Eliminando imágenes CI antiguas (excepto SHA actual: $CURRENT_SHA) ==="
+          IMAGES_TO_REMOVE=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E '^uis-schedule-system-(backend|frontend):ci-' | grep -v ":ci-${CURRENT_SHA}$" || true)
+
+          if [ -n "$IMAGES_TO_REMOVE" ]; then
+            echo "Imágenes CI antiguas a eliminar:"
+            echo "$IMAGES_TO_REMOVE"
+            for img in $IMAGES_TO_REMOVE; do
+              echo "Eliminando $img..."
+              docker rmi "$img" || true
+            done
+          else
+            echo "No se encontraron imágenes CI antiguas pendientes por eliminar."
+          fi
+
+          echo "=== 2. Eliminando contenedores parados, redes no usadas e imágenes no utilizadas ==="
+          docker system prune -af
+
+          echo "=== 3. Eliminando volúmenes anónimos huérfanos ==="
+          docker volume prune -f
+
+          echo "=== 4. Limpiando cache de Docker Buildx no utilizada en las últimas 12 horas ==="
+          docker builder prune -af --filter until=12h || docker buildx prune -af --filter until=12h || true
+
+          echo "=== ESPACIO EN DISCO Y DOCKER DESPUÉS DE LA LIMPIEZA ==="
+          docker system df
+          df -h /
