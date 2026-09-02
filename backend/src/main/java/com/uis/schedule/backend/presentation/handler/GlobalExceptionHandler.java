@@ -122,6 +122,23 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "You do not have sufficient permissions to perform this action");
     }
 
+    /**
+     * Protected-role operations (ADMINISTRATOR) return 403.
+     * Roles still assigned to users return 409. Other IllegalStateException
+     * (e.g. mail transport) stay as 500 so they are not leaked as conflicts.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Object>> handleIllegalStateException(IllegalStateException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Illegal state";
+        if (message.startsWith("Security protection")) {
+            return build(HttpStatus.FORBIDDEN, message);
+        }
+        if (message.contains("assigned to")) {
+            return build(HttpStatus.CONFLICT, message);
+        }
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "An internal server error occurred");
+    }
+
     // ─── 409 — Conflict ───────────────────────────
 
     @ExceptionHandler(InvitationConflictException.class)

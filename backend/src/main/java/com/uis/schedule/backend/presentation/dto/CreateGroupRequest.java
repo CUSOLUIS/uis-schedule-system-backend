@@ -1,5 +1,6 @@
 package com.uis.schedule.backend.presentation.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -28,6 +29,7 @@ public class CreateGroupRequest {
     @Min(value = 1, message = "Capacity must be at least 1")
     private Integer capacity;
 
+    @Schema(description = "Optional classroom. If omitted, the group is created without an assigned classroom. Capacity is validated against the classroom only when this field is present.")
     private UUID classroomId;
 
     private UUID teacherId;

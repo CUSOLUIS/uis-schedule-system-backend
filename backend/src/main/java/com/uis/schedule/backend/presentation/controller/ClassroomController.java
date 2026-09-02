@@ -76,7 +76,7 @@ public class ClassroomController {
         return ResponseEntity.ok(ApiResponse.success(classrooms, "Classrooms retrieved successfully by status"));
     }
 
-    @Operation(summary = "Search classrooms", description = "Searches active classrooms by name (number), building and minimum capacity. Requires authentication.")
+    @Operation(summary = "Search classrooms", description = "Searches active classrooms by name (number), campus (sede), building and minimum capacity. Requires authentication.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved matching classrooms"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
@@ -86,11 +86,12 @@ public class ClassroomController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PaginatedResponse<ClassroomListDTO>>> search(
             @RequestParam(required = false) String name,
+            @RequestParam(required = false) String campus,
             @RequestParam(required = false) String building,
             @RequestParam(required = false) Integer capacity,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        PaginatedResponse<ClassroomListDTO> classrooms = classroomService.searchClassrooms(name, building, capacity, page, size);
+        PaginatedResponse<ClassroomListDTO> classrooms = classroomService.searchClassrooms(name, campus, building, capacity, page, size);
         return ResponseEntity.ok(ApiResponse.success(classrooms, "Classrooms retrieved successfully"));
     }
 

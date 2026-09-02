@@ -34,11 +34,13 @@ public interface ClassroomRepository extends JpaRepository<ClassroomEntity, UUID
             SELECT c FROM ClassroomEntity c
             WHERE c.isActive = true
               AND (:name IS NULL OR :name = '' OR LOWER(c.number) LIKE LOWER(CONCAT('%', :name, '%')))
+              AND (:campus IS NULL OR :campus = '' OR LOWER(c.campus) LIKE LOWER(CONCAT('%', :campus, '%')))
               AND (:building IS NULL OR :building = '' OR LOWER(c.building) LIKE LOWER(CONCAT('%', :building, '%')))
               AND (:capacity IS NULL OR c.maxCapacity >= :capacity)
             """)
     Page<ClassroomEntity> searchActive(
             @Param("name") String name,
+            @Param("campus") String campus,
             @Param("building") String building,
             @Param("capacity") Integer capacity,
             Pageable pageable

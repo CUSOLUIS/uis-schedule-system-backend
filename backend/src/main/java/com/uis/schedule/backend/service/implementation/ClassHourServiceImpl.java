@@ -112,6 +112,24 @@ public class ClassHourServiceImpl implements ClassHourService {
         return convertToPaginatedResponse(classHoursPage);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ClassHourListDTO> findByDayId(UUID dayId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository
+                .findByDays_DayIdAndIsActiveTrueAndGroupId_IsActiveTrue(dayId, pageable);
+        return convertToPaginatedResponse(classHoursPage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ClassHourListDTO> findByTeacherId(UUID teacherId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository
+                .findByGroupId_TeacherId_TeacherIdAndIsActiveTrueAndGroupId_IsActiveTrue(teacherId, pageable);
+        return convertToPaginatedResponse(classHoursPage);
+    }
+
     private PaginatedResponse<ClassHourListDTO> convertToPaginatedResponse(Page<ClassHourEntity> classHoursPage) {
         List<ClassHourListDTO> content = classHoursPage.getContent().stream()
                 .map(ClassHourMapper::entityToListDTO)
@@ -168,8 +186,8 @@ public class ClassHourServiceImpl implements ClassHourService {
         LocalDate endDate = request.getEndDate();
         validateDateRange(startDate, endDate);
 
-        // Validate no overlap for any of the specified days (time + date range)
-        validateNoOverlap(dayIds, request.getClassroomId(),
+        UUID teacherId = group.getTeacherId() != null ? group.getTeacherId().getTeacherId() : null;
+        validateNoOverlap(dayIds, request.getClassroomId(), teacherId,
                 request.getStartTime(), request.getEndTime(), startDate, endDate, null);
 
         try {
@@ -254,6 +272,7 @@ public class ClassHourServiceImpl implements ClassHourService {
         // Validate no overlap if schedule-relevant fields changed
         boolean scheduleChanged = request.getDayIds() != null
                 || request.getClassroomId() != null
+                || request.getGroupId() != null
                 || request.getStartTime() != null
                 || request.getEndTime() != null
                 || request.getStartDate() != null
@@ -264,7 +283,10 @@ public class ClassHourServiceImpl implements ClassHourService {
                     .map(DayWeekEntity::getDayId)
                     .collect(Collectors.toList());
             UUID classroomId = classHourToUpdate.getClassroomId() != null ? classHourToUpdate.getClassroomId().getClassroomId() : null;
-            validateNoOverlap(currentDayIds, classroomId, startTime, endTime,
+            UUID teacherId = classHourToUpdate.getGroupId() != null && classHourToUpdate.getGroupId().getTeacherId() != null
+                    ? classHourToUpdate.getGroupId().getTeacherId().getTeacherId()
+                    : null;
+            validateNoOverlap(currentDayIds, classroomId, teacherId, startTime, endTime,
                     classHourToUpdate.getStartDate(), classHourToUpdate.getEndDate(), id);
         }
 
@@ -337,25 +359,38 @@ public class ClassHourServiceImpl implements ClassHourService {
         return days;
     }
 
-    private void validateNoOverlap(List<UUID> dayIds, UUID classroomId,
+    private void validateNoOverlap(List<UUID> dayIds, UUID classroomId, UUID teacherId,
                                    LocalTime startTime, LocalTime endTime,
                                    LocalDate startDate, LocalDate endDate,
                                    UUID excludeId) {
-        List<ClassHourEntity> overlapping;
+        List<ClassHourEntity> overlappingClassroom;
 
-        if (excludeId != null) {
-            overlapping = classHourRepository.findOverlappingHours(
-                    dayIds, classroomId, startTime, endTime, startDate, endDate, excludeId);
-        } else {
-            overlapping = classHourRepository.findOverlappingHoursForCreate(
-                    dayIds, classroomId, startTime, endTime, startDate, endDate);
+        if (classroomId != null) {
+            if (excludeId != null) {
+                overlappingClassroom = classHourRepository.findOverlappingHours(
+                        dayIds, classroomId, startTime, endTime, startDate, endDate, excludeId);
+            } else {
+                overlappingClassroom = classHourRepository.findOverlappingHoursForCreate(
+                        dayIds, classroomId, startTime, endTime, startDate, endDate);
+            }
+
+            if (!overlappingClassroom.isEmpty()) {
+                log.warn("Schedule overlap detected for classroom {} on days {} between {} and {} ({} to {})",
+                        classroomId, dayIds, startTime, endTime, startDate, endDate);
+                throw new ScheduleConflictException(
+                        "The classroom is already occupied on the specified days and time range.");
+            }
         }
 
-        if (!overlapping.isEmpty()) {
-            log.warn("Schedule overlap detected for classroom {} on days {} between {} and {} ({} to {})",
-                    classroomId, dayIds, startTime, endTime, startDate, endDate);
-            throw new ScheduleConflictException(
-                    "The classroom is already occupied on the specified days and time range.");
+        if (teacherId != null) {
+            List<ClassHourEntity> overlappingTeacher = classHourRepository.findOverlappingHoursByTeacher(
+                    dayIds, teacherId, startTime, endTime, startDate, endDate, excludeId);
+            if (!overlappingTeacher.isEmpty()) {
+                log.warn("Schedule overlap detected for teacher {} on days {} between {} and {} ({} to {})",
+                        teacherId, dayIds, startTime, endTime, startDate, endDate);
+                throw new ScheduleConflictException(
+                        "The teacher already has a class hour on the specified days and time range.");
+            }
         }
     }
 }

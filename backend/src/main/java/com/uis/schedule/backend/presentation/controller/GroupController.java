@@ -139,7 +139,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(group, "Group retrieved successfully"));
     }
 
-    @Operation(summary = "Create a new group", description = "Creates a new group. Requires ADMINISTRATOR role. The group capacity cannot exceed the classroom max capacity.")
+    @Operation(summary = "Create a new group", description = "Creates a new group. Requires ADMINISTRATOR role. classroomId is optional; when provided, group capacity cannot exceed the classroom max capacity. Creating a group does not reserve the classroom globally.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Group created successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid group data"),

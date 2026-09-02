@@ -32,6 +32,10 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
 
     List<ClassHourEntity> findAllByGroupId_GroupIdAndIsActiveTrue(UUID groupId);
 
+    Page<ClassHourEntity> findByDays_DayIdAndIsActiveTrueAndGroupId_IsActiveTrue(UUID dayId, Pageable pageable);
+
+    Page<ClassHourEntity> findByGroupId_TeacherId_TeacherIdAndIsActiveTrueAndGroupId_IsActiveTrue(UUID teacherId, Pageable pageable);
+
     /**
      * Find active class hours that overlap with the given time range and date range
      * on any of the specified days, in a specific classroom,
@@ -83,5 +87,30 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
             @Param("endTime") LocalTime endTime,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * Overlapping active class hours for the same teacher (via the assigned group).
+     */
+    @Query("SELECT ch FROM ClassHourEntity ch " +
+           "JOIN ch.days d " +
+           "JOIN ch.groupId g " +
+           "WHERE d.dayId IN :dayIds " +
+           "AND g.teacherId.teacherId = :teacherId " +
+           "AND ch.isActive = true " +
+           "AND g.isActive = true " +
+           "AND (:excludeId IS NULL OR ch.classHourId <> :excludeId) " +
+           "AND ch.startTime < :endTime " +
+           "AND ch.endTime > :startTime " +
+           "AND ch.startDate <= :endDate " +
+           "AND ch.endDate >= :startDate")
+    List<ClassHourEntity> findOverlappingHoursByTeacher(
+            @Param("dayIds") List<UUID> dayIds,
+            @Param("teacherId") UUID teacherId,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("excludeId") UUID excludeId
     );
 }

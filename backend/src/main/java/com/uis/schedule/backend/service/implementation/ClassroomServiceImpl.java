@@ -68,10 +68,10 @@ public class ClassroomServiceImpl implements ClassroomService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaginatedResponse<ClassroomListDTO> searchClassrooms(String name, String building, Integer capacity,
-                                                                int page, int size) {
+    public PaginatedResponse<ClassroomListDTO> searchClassrooms(String name, String campus, String building,
+                                                                Integer capacity, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ClassroomEntity> classroomsPage = classroomRepository.searchActive(name, building, capacity, pageable);
+        Page<ClassroomEntity> classroomsPage = classroomRepository.searchActive(name, campus, building, capacity, pageable);
         return convertToPaginatedResponse(classroomsPage);
     }
 

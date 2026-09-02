@@ -123,11 +123,43 @@ public class ClassHourController {
         return ResponseEntity.ok(ApiResponse.success(classHours, "Class hours retrieved successfully by classroom"));
     }
 
+    @Operation(summary = "Get class hours by day", description = "Retrieves a paginated list of class hours for a specific day of the week. Requires authentication.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved class hours by day"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/day/{dayId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaginatedResponse<ClassHourListDTO>>> getByDay(
+            @PathVariable UUID dayId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<ClassHourListDTO> classHours = classHourService.findByDayId(dayId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(classHours, "Class hours retrieved successfully by day"));
+    }
+
+    @Operation(summary = "Get class hours by teacher", description = "Retrieves a paginated list of class hours for a specific teacher. Requires authentication.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved class hours by teacher"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/teacher/{teacherId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaginatedResponse<ClassHourListDTO>>> getByTeacher(
+            @PathVariable UUID teacherId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<ClassHourListDTO> classHours = classHourService.findByTeacherId(teacherId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(classHours, "Class hours retrieved successfully by teacher"));
+    }
+
     @Operation(summary = "Create a new class hour", description = "Creates a new class hour. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Class hour created successfully"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid class hour data or referenced entity not found/disabled"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Classroom is already occupied in the requested slot"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Classroom or teacher is already occupied in the requested slot"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
