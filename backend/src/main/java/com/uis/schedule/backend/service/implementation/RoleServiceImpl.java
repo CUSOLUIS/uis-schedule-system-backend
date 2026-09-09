@@ -4,6 +4,8 @@ import com.uis.schedule.backend.persistence.entity.RoleEntity;
 import com.uis.schedule.backend.persistence.repository.RoleRepository;
 import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.presentation.dto.*;
+import com.uis.schedule.backend.service.exception.ProtectedRoleException;
+import com.uis.schedule.backend.service.exception.RoleInUseException;
 import com.uis.schedule.backend.service.exception.RoleNotFoundException;
 import com.uis.schedule.backend.service.interfaces.RoleService;
 import com.uis.schedule.backend.util.mapper.RoleMapper;
@@ -177,12 +179,12 @@ public class RoleServiceImpl implements RoleService {
 
         if (ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName())) {
             log.warn("Attempt to delete ADMINISTRATOR role blocked for ID: {}", id);
-            throw new IllegalStateException("Security protection: The ADMINISTRATOR role cannot be deleted.");
+            throw new ProtectedRoleException("Security protection: The ADMINISTRATOR role cannot be deleted.");
         }
 
         if (userRepository.existsByRoles_Guid(id)) {
             log.warn("Attempt to delete role assigned to users blocked for ID: {}", id);
-            throw new IllegalStateException("Role is assigned to one or more users and cannot be deleted.");
+            throw new RoleInUseException("Role is assigned to one or more users and cannot be deleted.");
         }
 
         role.setIsActive(false);
@@ -194,7 +196,7 @@ public class RoleServiceImpl implements RoleService {
     private void assertAdministratorNotMutated(RoleEntity role) {
         if (ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName())) {
             log.warn("Attempt to modify or deactivate ADMINISTRATOR role blocked for ID: {}", role.getGuid());
-            throw new IllegalStateException(
+            throw new ProtectedRoleException(
                     "Security protection: The ADMINISTRATOR role cannot be modified or deactivated.");
         }
     }

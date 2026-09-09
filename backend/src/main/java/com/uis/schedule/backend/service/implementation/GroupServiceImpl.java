@@ -94,7 +94,7 @@ public class GroupServiceImpl implements GroupService {
     @Transactional(readOnly = true)
     public PaginatedResponse<GroupListDTO> findByClassroom(UUID classroomId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<GroupEntity> groupsPage = groupRepository.findByClassroomId_ClassroomIdAndIsActiveTrue(classroomId, pageable);
+        Page<GroupEntity> groupsPage = groupRepository.findByActiveClassHourClassroom(classroomId, pageable);
         return convertToPaginatedResponse(groupsPage);
     }
 
@@ -207,7 +207,13 @@ public class GroupServiceImpl implements GroupService {
             validateCapacity(request.getCapacity(), maxCapacity);
         }
 
+        boolean wasActive = groupToUpdate.isActive();
+
         GroupMapper.updateEntityFromRequest(groupToUpdate, request);
+
+        if (wasActive && !groupToUpdate.isActive()) {
+            deactivateActiveClassHours(id);
+        }
 
         resolveOptionalRelations(groupToUpdate, request.getTeacherId(), request.getPeriodId(), request.getSubjectId());
 
@@ -248,16 +254,20 @@ public class GroupServiceImpl implements GroupService {
             throw new IllegalArgumentException("Group is already disabled (soft-deleted)");
         }
 
-        List<ClassHourEntity> classHours = classHourRepository.findAllByGroupId_GroupIdAndIsActiveTrue(id);
-        for (ClassHourEntity classHour : classHours) {
-            classHour.setActive(false);
-        }
-        classHourRepository.saveAll(classHours);
+        deactivateActiveClassHours(id);
 
         group.setActive(false);
         groupRepository.save(group);
 
-        log.info("Group soft-deleted successfully with ID: {}. Released {} class hour(s).", id, classHours.size());
+        log.info("Group soft-deleted successfully with ID: {}.", id);
+    }
+
+    private void deactivateActiveClassHours(UUID groupId) {
+        List<ClassHourEntity> classHours = classHourRepository.findAllByGroupId_GroupIdAndIsActiveTrue(groupId);
+        for (ClassHourEntity classHour : classHours) {
+            classHour.setActive(false);
+        }
+        classHourRepository.saveAll(classHours);
     }
 
     /**
@@ -292,7 +302,10 @@ public class GroupServiceImpl implements GroupService {
         if (name == null || subjectId == null || periodId == null) {
             return;
         }
-        if (groupRepository.existsActiveDuplicate(name, subjectId, periodId, excludeGroupId)) {
+        boolean duplicate = excludeGroupId == null
+                ? groupRepository.existsActiveDuplicateForCreate(name, subjectId, periodId)
+                : groupRepository.existsActiveDuplicateExcluding(name, subjectId, periodId, excludeGroupId);
+        if (duplicate) {
             throw new GroupAlreadyExistsException(
                     "A group with the same name, subject and academic period already exists.");
         }

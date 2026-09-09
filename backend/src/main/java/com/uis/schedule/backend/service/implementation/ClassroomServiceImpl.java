@@ -230,7 +230,10 @@ public class ClassroomServiceImpl implements ClassroomService {
         if (number == null) {
             return;
         }
-        if (classroomRepository.existsActiveDuplicate(number, campus, building, excludeId)) {
+        boolean duplicate = excludeId == null
+                ? classroomRepository.existsActiveDuplicateForCreate(number, campus, building)
+                : classroomRepository.existsActiveDuplicateExcluding(number, campus, building, excludeId);
+        if (duplicate) {
             throw new ClassroomAlreadyExistsException(
                     "A classroom with the same number, campus and building already exists.");
         }

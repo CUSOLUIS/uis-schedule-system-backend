@@ -4,6 +4,9 @@ import com.uis.schedule.backend.presentation.dto.*;
 import com.uis.schedule.backend.service.exception.ClassroomNotFoundException;
 import com.uis.schedule.backend.service.interfaces.ClassroomService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -112,7 +115,25 @@ public class ClassroomController {
 
     @Operation(summary = "Create a new classroom", description = "Creates a new classroom. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Classroom created successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "201",
+                    description = "Classroom created successfully",
+                    content = @Content(schema = @Schema(implementation = ClassroomResponse.class),
+                            examples = @ExampleObject(name = "Aula creada", value = """
+                                    {
+                                      "Data": {
+                                        "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                                        "number": "301",
+                                        "maxCapacity": 40,
+                                        "building": "Ciencias",
+                                        "campus": "Principal",
+                                        "type": "AULA",
+                                        "isActive": true
+                                      },
+                                      "Message": "Classroom created successfully",
+                                      "Errors": []
+                                    }
+                                    """))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid classroom data"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "A classroom with the same number, campus and building already exists"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),

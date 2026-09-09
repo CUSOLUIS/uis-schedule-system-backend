@@ -33,14 +33,36 @@ public interface GroupRepository extends JpaRepository<GroupEntity, UUID> {
     List<GroupEntity> findAllByClassroomId_ClassroomIdAndIsActiveTrue(UUID classroomId);
 
     @Query("""
+            SELECT DISTINCT g FROM GroupEntity g
+            JOIN ClassHourEntity ch ON ch.groupId = g
+            WHERE ch.classroomId.classroomId = :classroomId
+              AND ch.isActive = true
+              AND g.isActive = true
+            """)
+    Page<GroupEntity> findByActiveClassHourClassroom(@Param("classroomId") UUID classroomId, Pageable pageable);
+
+    @Query("""
             SELECT COUNT(g) > 0 FROM GroupEntity g
             WHERE LOWER(g.name) = LOWER(:name)
               AND g.subjectId.subjectId = :subjectId
               AND g.periodId.periodId = :periodId
               AND g.isActive = true
-              AND (:excludeGroupId IS NULL OR g.groupId <> :excludeGroupId)
             """)
-    boolean existsActiveDuplicate(
+    boolean existsActiveDuplicateForCreate(
+            @Param("name") String name,
+            @Param("subjectId") UUID subjectId,
+            @Param("periodId") UUID periodId
+    );
+
+    @Query("""
+            SELECT COUNT(g) > 0 FROM GroupEntity g
+            WHERE LOWER(g.name) = LOWER(:name)
+              AND g.subjectId.subjectId = :subjectId
+              AND g.periodId.periodId = :periodId
+              AND g.isActive = true
+              AND g.groupId <> :excludeGroupId
+            """)
+    boolean existsActiveDuplicateExcluding(
             @Param("name") String name,
             @Param("subjectId") UUID subjectId,
             @Param("periodId") UUID periodId,

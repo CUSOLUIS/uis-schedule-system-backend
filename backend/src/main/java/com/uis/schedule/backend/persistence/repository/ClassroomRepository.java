@@ -21,9 +21,22 @@ public interface ClassroomRepository extends JpaRepository<ClassroomEntity, UUID
               AND LOWER(COALESCE(c.campus, '')) = LOWER(COALESCE(:campus, ''))
               AND LOWER(COALESCE(c.building, '')) = LOWER(COALESCE(:building, ''))
               AND c.isActive = true
-              AND (:excludeId IS NULL OR c.classroomId <> :excludeId)
             """)
-    boolean existsActiveDuplicate(
+    boolean existsActiveDuplicateForCreate(
+            @Param("number") String number,
+            @Param("campus") String campus,
+            @Param("building") String building
+    );
+
+    @Query("""
+            SELECT COUNT(c) > 0 FROM ClassroomEntity c
+            WHERE LOWER(c.number) = LOWER(:number)
+              AND LOWER(COALESCE(c.campus, '')) = LOWER(COALESCE(:campus, ''))
+              AND LOWER(COALESCE(c.building, '')) = LOWER(COALESCE(:building, ''))
+              AND c.isActive = true
+              AND c.classroomId <> :excludeId
+            """)
+    boolean existsActiveDuplicateExcluding(
             @Param("number") String number,
             @Param("campus") String campus,
             @Param("building") String building,

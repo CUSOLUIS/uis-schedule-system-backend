@@ -6,6 +6,8 @@ import com.uis.schedule.backend.persistence.repository.UserRepository;
 import com.uis.schedule.backend.presentation.dto.PaginatedResponse;
 import com.uis.schedule.backend.presentation.dto.RoleListDTO;
 import com.uis.schedule.backend.presentation.dto.UpdateRoleRequest;
+import com.uis.schedule.backend.service.exception.ProtectedRoleException;
+import com.uis.schedule.backend.service.exception.RoleInUseException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,7 +61,7 @@ class RoleServiceImplTest {
                 .isActive(false)
                 .build();
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class,
+        ProtectedRoleException ex = assertThrows(ProtectedRoleException.class,
                 () -> roleService.updateRole(adminId, request));
 
         assertTrue(ex.getMessage().startsWith("Security protection"));
@@ -76,7 +78,7 @@ class RoleServiceImplTest {
                 .build();
         when(roleRepository.findById(adminId)).thenReturn(Optional.of(administrator));
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class,
+        ProtectedRoleException ex = assertThrows(ProtectedRoleException.class,
                 () -> roleService.deleteRole(adminId));
 
         assertTrue(ex.getMessage().contains("cannot be deleted"));
@@ -95,7 +97,7 @@ class RoleServiceImplTest {
         when(roleRepository.findById(roleId)).thenReturn(Optional.of(teacher));
         when(userRepository.existsByRoles_Guid(roleId)).thenReturn(true);
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class,
+        RoleInUseException ex = assertThrows(RoleInUseException.class,
                 () -> roleService.deleteRole(roleId));
 
         assertTrue(ex.getMessage().contains("assigned to"));

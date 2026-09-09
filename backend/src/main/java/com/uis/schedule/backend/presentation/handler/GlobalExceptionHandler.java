@@ -122,6 +122,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "You do not have sufficient permissions to perform this action");
     }
 
+    @ExceptionHandler(ProtectedRoleException.class)
+    public ResponseEntity<ApiResponse<Object>> handleProtectedRoleException(ProtectedRoleException ex) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
     /**
      * Protected-role operations (ADMINISTRATOR) return 403.
      * Roles still assigned to users return 409. Other IllegalStateException
@@ -155,6 +160,7 @@ public class GlobalExceptionHandler {
             GroupAlreadyExistsException.class,
             ClassroomAlreadyExistsException.class,
             ClassroomHasActiveGroupsException.class,
+            RoleInUseException.class,
             ScheduleConflictException.class
     })
     public ResponseEntity<ApiResponse<Object>> handleConflictExceptions(RuntimeException ex) {
