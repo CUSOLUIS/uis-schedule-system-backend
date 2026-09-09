@@ -3,6 +3,7 @@ package com.uis.schedule.backend.presentation.handler;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.uis.schedule.backend.presentation.dto.ApiResponse;
 import com.uis.schedule.backend.service.exception.*;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -121,6 +122,28 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, "You do not have sufficient permissions to perform this action");
     }
 
+    @ExceptionHandler(ProtectedRoleException.class)
+    public ResponseEntity<ApiResponse<Object>> handleProtectedRoleException(ProtectedRoleException ex) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    /**
+     * Protected-role operations (ADMINISTRATOR) return 403.
+     * Roles still assigned to users return 409. Other IllegalStateException
+     * (e.g. mail transport) stay as 500 so they are not leaked as conflicts.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Object>> handleIllegalStateException(IllegalStateException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Illegal state";
+        if (message.startsWith("Security protection")) {
+            return build(HttpStatus.FORBIDDEN, message);
+        }
+        if (message.contains("assigned to")) {
+            return build(HttpStatus.CONFLICT, message);
+        }
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, "An internal server error occurred");
+    }
+
     // ─── 409 — Conflict ───────────────────────────
 
     @ExceptionHandler(InvitationConflictException.class)
@@ -131,6 +154,29 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Object>> handleUserAlreadyExistsException(UserAlreadyExistsException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler({
+            GroupAlreadyExistsException.class,
+            ClassroomAlreadyExistsException.class,
+            ClassroomHasActiveGroupsException.class,
+            RoleInUseException.class,
+            ScheduleConflictException.class
+    })
+    public ResponseEntity<ApiResponse<Object>> handleConflictExceptions(RuntimeException ex) {
+        return build(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        return build(HttpStatus.CONFLICT, "The operation violates a uniqueness or integrity constraint.");
+    }
+
+    // ─── 422 — Unprocessable entity (business rules) ──
+
+    @ExceptionHandler(CapacityConstraintException.class)
+    public ResponseEntity<ApiResponse<Object>> handleCapacityConstraintException(CapacityConstraintException ex) {
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
     }
 
     // ─── 500 — Catch-all (never expose internal details) ──

@@ -10,6 +10,7 @@ import com.uis.schedule.backend.persistence.repository.DayWeekRepository;
 import com.uis.schedule.backend.persistence.repository.GroupRepository;
 import com.uis.schedule.backend.presentation.dto.*;
 import com.uis.schedule.backend.service.exception.ClassHourNotFoundException;
+import com.uis.schedule.backend.service.exception.ScheduleConflictException;
 import com.uis.schedule.backend.service.interfaces.ClassHourService;
 import com.uis.schedule.backend.util.mapper.ClassHourMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -58,7 +59,7 @@ public class ClassHourServiceImpl implements ClassHourService {
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> listClassHours(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ClassHourEntity> classHoursPage = classHourRepository.findAllByIsActiveTrue(pageable);
+        Page<ClassHourEntity> classHoursPage = classHourRepository.findAllByIsActiveTrueAndGroupId_IsActiveTrue(pageable);
         return convertToPaginatedResponse(classHoursPage);
     }
 
@@ -74,7 +75,9 @@ public class ClassHourServiceImpl implements ClassHourService {
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> findByStatus(boolean status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ClassHourEntity> classHoursPage = classHourRepository.findAllByIsActive(status, pageable);
+        Page<ClassHourEntity> classHoursPage = status
+                ? classHourRepository.findAllByIsActiveTrueAndGroupId_IsActiveTrue(pageable)
+                : classHourRepository.findAllByIsActive(false, pageable);
         return convertToPaginatedResponse(classHoursPage);
     }
 
@@ -87,6 +90,7 @@ public class ClassHourServiceImpl implements ClassHourService {
         }
 
         return classHourRepository.findById(id)
+                .filter(ch -> ch.getGroupId() == null || ch.getGroupId().isActive())
                 .map(ClassHourMapper::entityToDetailDTO);
     }
 
@@ -94,7 +98,8 @@ public class ClassHourServiceImpl implements ClassHourService {
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> findByGroupId(UUID groupId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ClassHourEntity> classHoursPage = classHourRepository.findByGroupId_GroupId(groupId, pageable);
+        Page<ClassHourEntity> classHoursPage = classHourRepository
+                .findByGroupId_GroupIdAndIsActiveTrueAndGroupId_IsActiveTrue(groupId, pageable);
         return convertToPaginatedResponse(classHoursPage);
     }
 
@@ -102,7 +107,26 @@ public class ClassHourServiceImpl implements ClassHourService {
     @Transactional(readOnly = true)
     public PaginatedResponse<ClassHourListDTO> findByClassroomId(UUID classroomId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<ClassHourEntity> classHoursPage = classHourRepository.findByClassroomId_ClassroomId(classroomId, pageable);
+        Page<ClassHourEntity> classHoursPage = classHourRepository
+                .findByClassroomId_ClassroomIdAndIsActiveTrueAndGroupId_IsActiveTrue(classroomId, pageable);
+        return convertToPaginatedResponse(classHoursPage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ClassHourListDTO> findByDayId(UUID dayId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository
+                .findByDays_DayIdAndIsActiveTrueAndGroupId_IsActiveTrue(dayId, pageable);
+        return convertToPaginatedResponse(classHoursPage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ClassHourListDTO> findByTeacherId(UUID teacherId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassHourEntity> classHoursPage = classHourRepository
+                .findByGroupId_TeacherId_TeacherIdAndIsActiveTrueAndGroupId_IsActiveTrue(teacherId, pageable);
         return convertToPaginatedResponse(classHoursPage);
     }
 
@@ -162,8 +186,8 @@ public class ClassHourServiceImpl implements ClassHourService {
         LocalDate endDate = request.getEndDate();
         validateDateRange(startDate, endDate);
 
-        // Validate no overlap for any of the specified days (time + date range)
-        validateNoOverlap(dayIds, request.getClassroomId(),
+        UUID teacherId = group.getTeacherId() != null ? group.getTeacherId().getTeacherId() : null;
+        validateNoOverlap(dayIds, request.getClassroomId(), teacherId,
                 request.getStartTime(), request.getEndTime(), startDate, endDate, null);
 
         try {
@@ -185,11 +209,6 @@ public class ClassHourServiceImpl implements ClassHourService {
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while creating class hour", e);
             throw new IllegalArgumentException("Class hour creation failed: A class hour with the same attributes may already exist.");
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Unexpected error while creating class hour", e);
-            throw new RuntimeException("Failed to create class hour", e);
         }
     }
 
@@ -253,6 +272,7 @@ public class ClassHourServiceImpl implements ClassHourService {
         // Validate no overlap if schedule-relevant fields changed
         boolean scheduleChanged = request.getDayIds() != null
                 || request.getClassroomId() != null
+                || request.getGroupId() != null
                 || request.getStartTime() != null
                 || request.getEndTime() != null
                 || request.getStartDate() != null
@@ -263,7 +283,10 @@ public class ClassHourServiceImpl implements ClassHourService {
                     .map(DayWeekEntity::getDayId)
                     .collect(Collectors.toList());
             UUID classroomId = classHourToUpdate.getClassroomId() != null ? classHourToUpdate.getClassroomId().getClassroomId() : null;
-            validateNoOverlap(currentDayIds, classroomId, startTime, endTime,
+            UUID teacherId = classHourToUpdate.getGroupId() != null && classHourToUpdate.getGroupId().getTeacherId() != null
+                    ? classHourToUpdate.getGroupId().getTeacherId().getTeacherId()
+                    : null;
+            validateNoOverlap(currentDayIds, classroomId, teacherId, startTime, endTime,
                     classHourToUpdate.getStartDate(), classHourToUpdate.getEndDate(), id);
         }
 
@@ -275,9 +298,6 @@ public class ClassHourServiceImpl implements ClassHourService {
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while updating class hour: {}", id, e);
             throw new IllegalArgumentException("Class hour update failed: A class hour with the same attributes may already exist.");
-        } catch (Exception e) {
-            log.error("Unexpected error while updating class hour: {}", id, e);
-            throw new RuntimeException("Failed to update class hour", e);
         }
     }
 
@@ -339,25 +359,38 @@ public class ClassHourServiceImpl implements ClassHourService {
         return days;
     }
 
-    private void validateNoOverlap(List<UUID> dayIds, UUID classroomId,
+    private void validateNoOverlap(List<UUID> dayIds, UUID classroomId, UUID teacherId,
                                    LocalTime startTime, LocalTime endTime,
                                    LocalDate startDate, LocalDate endDate,
                                    UUID excludeId) {
-        List<ClassHourEntity> overlapping;
+        List<ClassHourEntity> overlappingClassroom;
 
-        if (excludeId != null) {
-            overlapping = classHourRepository.findOverlappingHours(
-                    dayIds, classroomId, startTime, endTime, startDate, endDate, excludeId);
-        } else {
-            overlapping = classHourRepository.findOverlappingHoursForCreate(
-                    dayIds, classroomId, startTime, endTime, startDate, endDate);
+        if (classroomId != null) {
+            if (excludeId != null) {
+                overlappingClassroom = classHourRepository.findOverlappingHours(
+                        dayIds, classroomId, startTime, endTime, startDate, endDate, excludeId);
+            } else {
+                overlappingClassroom = classHourRepository.findOverlappingHoursForCreate(
+                        dayIds, classroomId, startTime, endTime, startDate, endDate);
+            }
+
+            if (!overlappingClassroom.isEmpty()) {
+                log.warn("Schedule overlap detected for classroom {} on days {} between {} and {} ({} to {})",
+                        classroomId, dayIds, startTime, endTime, startDate, endDate);
+                throw new ScheduleConflictException(
+                        "The classroom is already occupied on the specified days and time range.");
+            }
         }
 
-        if (!overlapping.isEmpty()) {
-            log.warn("Schedule overlap detected for classroom {} on days {} between {} and {} ({} to {})",
-                    classroomId, dayIds, startTime, endTime, startDate, endDate);
-            throw new IllegalArgumentException(
-                    "The classroom is already occupied on the specified days and time range.");
+        if (teacherId != null) {
+            List<ClassHourEntity> overlappingTeacher = classHourRepository.findOverlappingHoursByTeacher(
+                    dayIds, teacherId, startTime, endTime, startDate, endDate, excludeId);
+            if (!overlappingTeacher.isEmpty()) {
+                log.warn("Schedule overlap detected for teacher {} on days {} between {} and {} ({} to {})",
+                        teacherId, dayIds, startTime, endTime, startDate, endDate);
+                throw new ScheduleConflictException(
+                        "The teacher already has a class hour on the specified days and time range.");
+            }
         }
     }
 }

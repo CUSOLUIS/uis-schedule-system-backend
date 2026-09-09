@@ -22,6 +22,10 @@ public interface ClassHourService {
 
     PaginatedResponse<ClassHourListDTO> findByClassroomId(UUID classroomId, int page, int size);
 
+    PaginatedResponse<ClassHourListDTO> findByDayId(UUID dayId, int page, int size);
+
+    PaginatedResponse<ClassHourListDTO> findByTeacherId(UUID teacherId, int page, int size);
+
     ClassHourResponse createClassHour(CreateClassHourRequest request);
 
     ClassHourResponse updateClassHour(UUID id, UpdateClassHourRequest request);

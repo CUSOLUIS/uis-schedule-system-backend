@@ -4,6 +4,9 @@ import com.uis.schedule.backend.presentation.dto.*;
 import com.uis.schedule.backend.service.exception.GroupNotFoundException;
 import com.uis.schedule.backend.service.interfaces.GroupService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -92,7 +95,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(groups, "Groups retrieved successfully by name"));
     }
 
-    @Operation(summary = "Get groups by classroom", description = "Retrieves active groups assigned to a specific classroom. Requires authentication.")
+    @Operation(summary = "Get groups by classroom", description = "Retrieves active groups that have at least one active class hour in the given classroom. Requires authentication.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved groups by classroom"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
@@ -139,10 +142,31 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(group, "Group retrieved successfully"));
     }
 
-    @Operation(summary = "Create a new group", description = "Creates a new group. Requires ADMINISTRATOR role. The group capacity cannot exceed the classroom max capacity.")
+    @Operation(summary = "Create a new group", description = "Creates a new group. Requires ADMINISTRATOR role. classroomId is optional; when provided, group capacity cannot exceed the classroom max capacity. Creating a group does not reserve the classroom globally.")
     @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Group created successfully"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid group data or capacity exceeds classroom capacity"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "201",
+                    description = "Group created successfully",
+                    content = @Content(schema = @Schema(implementation = GroupResponse.class),
+                            examples = @ExampleObject(name = "Grupo creado", value = """
+                                    {
+                                      "Data": {
+                                        "id": "8f14e45f-ceea-467e-9d6c-8e2b8a3f9c11",
+                                        "name": "Grupo A - Cálculo I",
+                                        "capacity": 30,
+                                        "classroomId": null,
+                                        "teacherId": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+                                        "periodId": "a1b2c3d4-e5f6-4789-8abc-def012345678",
+                                        "subjectId": "c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f",
+                                        "isActive": true
+                                      },
+                                      "Message": "Group created successfully",
+                                      "Errors": []
+                                    }
+                                    """))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid group data"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "A group with the same name, subject and period already exists"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "Capacity exceeds classroom max capacity"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })

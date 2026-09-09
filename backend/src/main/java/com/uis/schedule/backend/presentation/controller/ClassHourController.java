@@ -4,6 +4,9 @@ import com.uis.schedule.backend.presentation.dto.*;
 import com.uis.schedule.backend.service.exception.ClassHourNotFoundException;
 import com.uis.schedule.backend.service.interfaces.ClassHourService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -123,10 +126,63 @@ public class ClassHourController {
         return ResponseEntity.ok(ApiResponse.success(classHours, "Class hours retrieved successfully by classroom"));
     }
 
+    @Operation(summary = "Get class hours by day", description = "Retrieves a paginated list of class hours for a specific day of the week. Requires authentication.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved class hours by day"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/day/{dayId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaginatedResponse<ClassHourListDTO>>> getByDay(
+            @PathVariable UUID dayId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<ClassHourListDTO> classHours = classHourService.findByDayId(dayId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(classHours, "Class hours retrieved successfully by day"));
+    }
+
+    @Operation(summary = "Get class hours by teacher", description = "Retrieves a paginated list of class hours for a specific teacher. Requires authentication.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Successfully retrieved class hours by teacher"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized - Token missing or invalid"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    @GetMapping("/teacher/{teacherId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<PaginatedResponse<ClassHourListDTO>>> getByTeacher(
+            @PathVariable UUID teacherId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<ClassHourListDTO> classHours = classHourService.findByTeacherId(teacherId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(classHours, "Class hours retrieved successfully by teacher"));
+    }
+
     @Operation(summary = "Create a new class hour", description = "Creates a new class hour. Requires ADMINISTRATOR role.")
     @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Class hour created successfully"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "201",
+                    description = "Class hour created successfully",
+                    content = @Content(schema = @Schema(implementation = ClassHourResponse.class),
+                            examples = @ExampleObject(name = "Hora de clase creada", value = """
+                                    {
+                                      "Data": {
+                                        "id": "1a2b3c4d-5e6f-4789-8abc-def012345679",
+                                        "startTime": "08:00:00",
+                                        "endTime": "10:00:00",
+                                        "groupId": "8f14e45f-ceea-467e-9d6c-8e2b8a3f9c11",
+                                        "classroomId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                                        "dayNames": ["LUNES"],
+                                        "startDate": "2026-07-16",
+                                        "endDate": "2026-11-20",
+                                        "isActive": true
+                                      },
+                                      "Message": "Class hour created successfully",
+                                      "Errors": []
+                                    }
+                                    """))),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid class hour data or referenced entity not found/disabled"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Classroom or teacher is already occupied in the requested slot"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have ADMINISTRATOR role"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
