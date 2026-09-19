@@ -383,8 +383,11 @@ public class ClassHourServiceImpl implements ClassHourService {
         }
 
         if (teacherId != null) {
-            List<ClassHourEntity> overlappingTeacher = classHourRepository.findOverlappingHoursByTeacher(
-                    dayIds, teacherId, startTime, endTime, startDate, endDate, excludeId);
+            List<ClassHourEntity> overlappingTeacher = excludeId == null
+                    ? classHourRepository.findOverlappingHoursByTeacherForCreate(
+                            dayIds, teacherId, startTime, endTime, startDate, endDate)
+                    : classHourRepository.findOverlappingHoursByTeacher(
+                            dayIds, teacherId, startTime, endTime, startDate, endDate, excludeId);
             if (!overlappingTeacher.isEmpty()) {
                 log.warn("Schedule overlap detected for teacher {} on days {} between {} and {} ({} to {})",
                         teacherId, dayIds, startTime, endTime, startDate, endDate);

@@ -90,7 +90,8 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
     );
 
     /**
-     * Overlapping active class hours for the same teacher (via the assigned group).
+     * Overlapping active class hours for the same teacher (via the assigned group),
+     * excluding a given class hour ID.
      */
     @Query("SELECT ch FROM ClassHourEntity ch " +
            "JOIN ch.days d " +
@@ -99,7 +100,7 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
            "AND g.teacherId.teacherId = :teacherId " +
            "AND ch.isActive = true " +
            "AND g.isActive = true " +
-           "AND (:excludeId IS NULL OR ch.classHourId <> :excludeId) " +
+           "AND ch.classHourId <> :excludeId " +
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime " +
            "AND ch.startDate <= :endDate " +
@@ -112,5 +113,29 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("excludeId") UUID excludeId
+    );
+
+    /**
+     * Overlapping active class hours for the same teacher (via the assigned group).
+     * Used for creating new class hours (no ID to exclude).
+     */
+    @Query("SELECT ch FROM ClassHourEntity ch " +
+           "JOIN ch.days d " +
+           "JOIN ch.groupId g " +
+           "WHERE d.dayId IN :dayIds " +
+           "AND g.teacherId.teacherId = :teacherId " +
+           "AND ch.isActive = true " +
+           "AND g.isActive = true " +
+           "AND ch.startTime < :endTime " +
+           "AND ch.endTime > :startTime " +
+           "AND ch.startDate <= :endDate " +
+           "AND ch.endDate >= :startDate")
+    List<ClassHourEntity> findOverlappingHoursByTeacherForCreate(
+            @Param("dayIds") List<UUID> dayIds,
+            @Param("teacherId") UUID teacherId,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
     );
 }

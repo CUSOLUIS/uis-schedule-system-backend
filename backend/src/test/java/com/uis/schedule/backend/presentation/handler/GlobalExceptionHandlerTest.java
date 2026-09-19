@@ -15,25 +15,13 @@ class GlobalExceptionHandlerTest {
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
-    void illegalState_administratorProtection_returns403() {
+    void illegalState_returns500WithoutLeakingMessage() {
         ResponseEntity<ApiResponse<Object>> response = handler.handleIllegalStateException(
-                new IllegalStateException("Security protection: The ADMINISTRATOR role cannot be deleted."));
+                new IllegalStateException("Mail transport failed"));
 
-        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
-        assertEquals("Security protection: The ADMINISTRATOR role cannot be deleted.",
-                response.getBody().getMessage());
-    }
-
-    @Test
-    void illegalState_roleAssignedToUsers_returns409() {
-        ResponseEntity<ApiResponse<Object>> response = handler.handleIllegalStateException(
-                new IllegalStateException("Role is assigned to one or more users and cannot be deleted."));
-
-        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Role is assigned to one or more users and cannot be deleted.",
-                response.getBody().getMessage());
+        assertEquals("An internal server error occurred", response.getBody().getMessage());
     }
 
     @Test
