@@ -83,7 +83,7 @@ Las principales entidades del dominio son:
 
    | Variable | Descripción |
    |---|---|
-   | `SPRING_PROFILE` | Perfil activo (`dev` para local, `prod` para Docker) |
+   | `SPRING_PROFILE` | Perfil activo: `dev` o `prod`. Controla qué migraciones de Flyway se cargan — `dev` carga `db/migration/schema` **+** `db/migration/dev-data` (datos de prueba); `prod` carga únicamente `db/migration/schema`, nunca datos de prueba. No depende de si se ejecuta en local o en Docker. |
    | `DB_HOST` | Host de PostgreSQL |
    | `DB_PORT` | Puerto de PostgreSQL |
    | `DB_NAME` | Nombre de la base de datos |
@@ -96,8 +96,10 @@ Las principales entidades del dominio son:
    | `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (separados por coma) |
    | `SERVER_PORT` | Puerto del servidor (por defecto `8080`) |
    | `MAIL_USERNAME` / `MAIL_PASSWORD` | Credenciales SMTP para envío de correos |
-   | `INVITATION_BASE_URL` | URL base del frontend para el enlace de invitación |
+   | `INVITATION_BASE_URL` | URL base del frontend para el enlace de invitación (sin valor por defecto: si falta, la aplicación no arranca) |
    | `PASSWORD_RESET_BASE_URL` | URL base del frontend para restablecer contraseña |
+   | `JWT_ACCESS_TOKEN_EXPIRATION_MS` | Expiración del access token en ms (por defecto `900000`) |
+   | `JWT_REFRESH_TOKEN_EXPIRATION_MS` | Expiración del refresh token en ms (por defecto `604800000`) |
 
 ## Ejecución en local
 
@@ -190,14 +192,32 @@ La mayoría de los endpoints de gestión de usuarios, roles e invitaciones está
 
 ## Migraciones de base de datos
 
-Las migraciones se gestionan con Flyway y se ubican en `src/main/resources/db/migration`:
+Las migraciones se gestionan con Flyway y están separadas en dos carpetas dentro de
+`src/main/resources/db/migration`, para que el perfil `prod` nunca cargue datos de
+prueba (ver `SPRING_PROFILE` arriba):
 
-| Script | Descripción |
-|---|---|
-| `V1__init.sql` | Creación del esquema inicial (usuarios, roles, facultades, escuelas, materias, docentes, grupos, clases, horarios, auditoría) |
-| `V2__cusol_data_dml.sql` | Datos iniciales (seed) de roles y catálogos |
-| `V3__invitation_system.sql` | Sistema de invitaciones de usuario |
-| `V4__password_reset_tokens.sql` | Tokens de recuperación de contraseña |
+```
+db/migration/
+├── schema/      # DDL y catálogos — se cargan en dev y en prod
+└── dev-data/    # Datos de prueba (usuarios, docentes, aulas, grupos...) — solo dev
+```
+
+`dev-data/` **sí está versionado en git** (no está en `.gitignore`): su contenido son
+datos ficticios de prueba, no secretos, así que no hace falta ningún paso extra para
+obtenerlos — un clon nuevo del repo ya trae los datos de desarrollo listos.
+
+| Script | Carpeta | Descripción |
+|---|---|---|
+| `V1__init.sql` | `schema/` | Creación del esquema inicial (usuarios, roles, facultades, escuelas, materias, docentes, grupos, clases, horarios, auditoría) |
+| `V2__cusol_data_dml.sql` | `schema/` | Catálogo de roles (ADMINISTRADOR, OPERADOR, DOCENTE, ESTUDIANTE) |
+| `V2_1__cusol_mock_users.sql` | `dev-data/` | Usuarios de prueba (administradores, operadores, estudiantes) |
+| `V3__invitation_system.sql` | `schema/` | Sistema de invitaciones de usuario |
+| `V4__password_reset_tokens.sql` | `schema/` | Tokens de recuperación de contraseña |
+| `V5__role_names_to_english.sql` | `schema/` | Normaliza los nombres de rol a inglés |
+| `V6__revoked_and_refresh_tokens.sql` | `schema/` | Tablas de refresh tokens y tokens revocados |
+| `V7__teacher_test_data.sql` | `dev-data/` | Usuarios de prueba con rol docente + registros en `teacher` |
+| `V8__classrooms_and_uuid_schema.sql` | `schema/` | Migración de PKs/FKs académicas de `bigint` a `uuid`, aulas, horarios por rango y tabla `class_hour_day` |
+| `V8_1__classroom_mock_data.sql` | `dev-data/` | Datos de prueba académicos: facultad, escuelas, aulas, materias, periodos, docentes, grupos, horarios, matrículas (`class`) y `schedule` |
 
 ## Pruebas
 
@@ -223,8 +243,11 @@ uis-schedule-system-backend/
 │   │   │   ├── java/com/uis/schedule/backend/
 │   │   │   └── resources/
 │   │   │       ├── application.properties
+│   │   │       ├── application-dev.properties
 │   │   │       ├── application-prod.properties
 │   │   │       └── db/migration/
+│   │   │           ├── schema/      # DDL + catálogos (dev y prod)
+│   │   │           └── dev-data/    # datos de prueba (solo dev)
 │   │   └── test/
 │   ├── docker-compose.yml
 │   ├── Dockerfile
