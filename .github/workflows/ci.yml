@@ -25,3 +25,11 @@ jobs:
       - name: Ejecutar tests y compilar el artefacto
         working-directory: ./backend
         run: mvn verify -Dmaven.compiler.release=17
+
+      - name: Verificar que prod no incluya datos de prueba
+        working-directory: ./backend
+        run: |
+          if grep -rl "db/migration/dev-data" src/main/resources/application.properties src/main/resources/application-prod.properties; then
+            echo "ERROR: application.properties / application-prod.properties no deben referenciar db/migration/dev-data" >&2
+            exit 1
+          fi
