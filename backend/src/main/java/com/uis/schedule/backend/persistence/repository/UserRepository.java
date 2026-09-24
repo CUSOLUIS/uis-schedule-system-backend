@@ -30,4 +30,6 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID>, JpaSpec
 
   // Verifica si ya existe un usuario con ese email
   boolean existsByEmail(String email);
+
+  boolean existsByRoles_Guid(UUID roleGuid);
 }

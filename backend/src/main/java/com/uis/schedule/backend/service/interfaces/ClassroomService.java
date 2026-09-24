@@ -16,6 +16,8 @@ public interface ClassroomService {
 
     PaginatedResponse<ClassroomListDTO> findByStatus(boolean status, int page, int size);
 
+    PaginatedResponse<ClassroomListDTO> searchClassrooms(String name, String campus, String building, Integer capacity, int page, int size);
+
     Optional<ClassroomDetailDTO> findClassroomById(UUID id);
 
     ClassroomResponse createClassroom(CreateClassroomRequest request);

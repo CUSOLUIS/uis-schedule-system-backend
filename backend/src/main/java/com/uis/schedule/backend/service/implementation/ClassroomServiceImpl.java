@@ -1,8 +1,13 @@
 package com.uis.schedule.backend.service.implementation;
 
 import com.uis.schedule.backend.persistence.entity.ClassroomEntity;
+import com.uis.schedule.backend.persistence.entity.GroupEntity;
 import com.uis.schedule.backend.persistence.repository.ClassroomRepository;
+import com.uis.schedule.backend.persistence.repository.GroupRepository;
 import com.uis.schedule.backend.presentation.dto.*;
+import com.uis.schedule.backend.service.exception.CapacityConstraintException;
+import com.uis.schedule.backend.service.exception.ClassroomAlreadyExistsException;
+import com.uis.schedule.backend.service.exception.ClassroomHasActiveGroupsException;
 import com.uis.schedule.backend.service.exception.ClassroomNotFoundException;
 import com.uis.schedule.backend.service.interfaces.ClassroomService;
 import com.uis.schedule.backend.util.mapper.ClassroomMapper;
@@ -29,10 +34,12 @@ import java.util.stream.Collectors;
 public class ClassroomServiceImpl implements ClassroomService {
 
     private final ClassroomRepository classroomRepository;
+    private final GroupRepository groupRepository;
 
     @Autowired
-    public ClassroomServiceImpl(ClassroomRepository classroomRepository) {
+    public ClassroomServiceImpl(ClassroomRepository classroomRepository, GroupRepository groupRepository) {
         this.classroomRepository = classroomRepository;
+        this.groupRepository = groupRepository;
     }
 
     @Override
@@ -56,6 +63,15 @@ public class ClassroomServiceImpl implements ClassroomService {
     public PaginatedResponse<ClassroomListDTO> findByStatus(boolean status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<ClassroomEntity> classroomsPage = classroomRepository.findAllByIsActive(status, pageable);
+        return convertToPaginatedResponse(classroomsPage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<ClassroomListDTO> searchClassrooms(String name, String campus, String building,
+                                                                Integer capacity, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ClassroomEntity> classroomsPage = classroomRepository.searchActive(name, campus, building, capacity, pageable);
         return convertToPaginatedResponse(classroomsPage);
     }
 
@@ -94,6 +110,8 @@ public class ClassroomServiceImpl implements ClassroomService {
 
         log.info("Creating new classroom with number: {}", request.getNumber());
 
+        ensureUniqueClassroom(request.getNumber(), request.getCampus(), request.getBuilding(), null);
+
         try {
             ClassroomEntity entity = ClassroomEntity.builder()
                     .number(request.getNumber())
@@ -110,10 +128,8 @@ public class ClassroomServiceImpl implements ClassroomService {
 
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while creating classroom: {}", request.getNumber(), e);
-            throw new IllegalArgumentException("Classroom creation failed: The classroom '" + request.getNumber() + "' may already exist.");
-        } catch (Exception e) {
-            log.error("Unexpected error while creating classroom: {}", request.getNumber(), e);
-            throw new RuntimeException("Failed to create classroom", e);
+            throw new ClassroomAlreadyExistsException(
+                    "A classroom with the same number, campus and building already exists.");
         }
     }
 
@@ -134,6 +150,19 @@ public class ClassroomServiceImpl implements ClassroomService {
                     return new ClassroomNotFoundException(id);
                 });
 
+        if (Boolean.FALSE.equals(request.getIsActive()) && classroomToUpdate.isActive()) {
+            assertNoActiveGroups(id);
+        }
+
+        if (request.getMaxCapacity() != null) {
+            validateCapacityAgainstAssignedGroups(id, request.getMaxCapacity());
+        }
+
+        String number = request.getNumber() != null ? request.getNumber() : classroomToUpdate.getNumber();
+        String campus = request.getCampus() != null ? request.getCampus() : classroomToUpdate.getCampus();
+        String building = request.getBuilding() != null ? request.getBuilding() : classroomToUpdate.getBuilding();
+        ensureUniqueClassroom(number, campus, building, id);
+
         try {
             ClassroomMapper.updateEntityFromRequest(classroomToUpdate, request);
             ClassroomEntity updatedClassroom = classroomRepository.save(classroomToUpdate);
@@ -143,10 +172,8 @@ public class ClassroomServiceImpl implements ClassroomService {
 
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while updating classroom: {}", id, e);
-            throw new IllegalArgumentException("Classroom update failed: A classroom with the same attributes may already exist.");
-        } catch (Exception e) {
-            log.error("Unexpected error while updating classroom: {}", id, e);
-            throw new RuntimeException("Failed to update classroom", e);
+            throw new ClassroomAlreadyExistsException(
+                    "A classroom with the same number, campus and building already exists.");
         }
     }
 
@@ -168,9 +195,47 @@ public class ClassroomServiceImpl implements ClassroomService {
             throw new IllegalArgumentException("Classroom is already disabled (soft-deleted)");
         }
 
+        assertNoActiveGroups(id);
+
         classroom.setActive(false);
         classroomRepository.save(classroom);
 
         log.info("Classroom soft-deleted successfully with ID: {}", id);
+    }
+
+    private void assertNoActiveGroups(UUID classroomId) {
+        if (groupRepository.existsByClassroomId_ClassroomIdAndIsActiveTrue(classroomId)) {
+            throw new ClassroomHasActiveGroupsException(
+                    "Cannot deactivate or delete a classroom that still has active groups assigned.");
+        }
+    }
+
+    private void validateCapacityAgainstAssignedGroups(UUID classroomId, int newMaxCapacity) {
+        List<GroupEntity> assignedGroups = groupRepository.findAllByClassroomId_ClassroomIdAndIsActiveTrue(classroomId);
+        int highestGroupCapacity = assignedGroups.stream()
+                .map(GroupEntity::getCapacity)
+                .filter(capacity -> capacity != null)
+                .max(Integer::compareTo)
+                .orElse(0);
+
+        if (newMaxCapacity < highestGroupCapacity) {
+            throw new CapacityConstraintException(
+                    "Classroom capacity (" + newMaxCapacity
+                            + ") cannot be lower than the largest assigned group capacity ("
+                            + highestGroupCapacity + ").");
+        }
+    }
+
+    private void ensureUniqueClassroom(String number, String campus, String building, UUID excludeId) {
+        if (number == null) {
+            return;
+        }
+        boolean duplicate = excludeId == null
+                ? classroomRepository.existsActiveDuplicateForCreate(number, campus, building)
+                : classroomRepository.existsActiveDuplicateExcluding(number, campus, building, excludeId);
+        if (duplicate) {
+            throw new ClassroomAlreadyExistsException(
+                    "A classroom with the same number, campus and building already exists.");
+        }
     }
 }
