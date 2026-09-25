@@ -42,8 +42,9 @@ Thumbs.db
 *~
 
 # Spring Boot
+# application-dev.properties is intentionally NOT ignored: it's a real,
+# version-controlled profile file (classpath:db/migration/schema + dev-data).
 application-local.properties
-application-dev.properties
 application-test.properties
 
 # Docker (optional, uncomment if needed)

@@ -10,8 +10,10 @@
 --   - class_hour_day join table   (ManyToMany with day_of_week)
 --   - day_of_week: add "domingo", lowercase all names
 --   - All academic-table PKs and FKs migrated from bigint to uuid
---   - Mock data with deterministic UUIDs
 --   - All foreign-key constraints recreated with readable names
+--
+-- Mock data for these tables now lives in
+-- db/migration/dev-data/V8_1__classroom_mock_data.sql (dev profile only).
 -- =========================================================
 
 -- =========================================================
@@ -249,10 +251,12 @@ ALTER TABLE public.schedule ADD PRIMARY KEY (schedule_id);
 ALTER TABLE public.schedule ALTER COLUMN class_id TYPE uuid USING gen_random_uuid();
 
 -- =========================================================
--- 7. MOCK DATA — deterministic UUIDs for academic entities
+-- 7. Clean ALL existing mock data (reverse dependency order)
+--    Needed because the UUID conversion above assigned random,
+--    disconnected UUIDs to FK columns (USING gen_random_uuid()),
+--    so any pre-existing rows are left inconsistent regardless
+--    of whether dev-data seeding runs afterward.
 -- =========================================================
-
--- 7.1 Clean ALL existing mock data (reverse dependency order)
 DELETE FROM public.class_hour_day;
 DELETE FROM public.class_hour;
 DELETE FROM public.class;
@@ -267,71 +271,11 @@ DELETE FROM public.faculty;
 DELETE FROM public.day_of_week;
 DELETE FROM public.audit_log;
 
--- 7.2 Days of week (7 days, lowercase)
-INSERT INTO public.day_of_week (day_id, name) VALUES
-('a0000001-0000-0000-0000-000000000001', 'lunes'),
-('a0000001-0000-0000-0000-000000000002', 'martes'),
-('a0000001-0000-0000-0000-000000000003', 'miércoles'),
-('a0000001-0000-0000-0000-000000000004', 'jueves'),
-('a0000001-0000-0000-0000-000000000005', 'viernes'),
-('a0000001-0000-0000-0000-000000000006', 'sábado'),
-('a0000001-0000-0000-0000-000000000007', 'domingo');
-
--- 7.3 Faculty
-INSERT INTO public.faculty (faculty_id, name) VALUES
-('b0000001-0000-0000-0000-000000000001', 'Ingeniería de Sistemas');
-
--- 7.4 School
-INSERT INTO public.school (school_id, faculty_id, name) VALUES
-('c0000001-0000-0000-0000-000000000001', 'b0000001-0000-0000-0000-000000000001', 'Ingeniería de Sistemas e Informática');
-
--- 7.5 Classrooms (with varchar number and is_active)
-INSERT INTO public.classroom (classroom_id, number, max_capacity, building, campus, type, is_active) VALUES
-('d0000001-0000-0000-0000-000000000001', '101', 30, 'Edificio B', 'Campus Principal', 'Teoría', true),
-('d0000001-0000-0000-0000-000000000002', '201', 25, 'Edificio B', 'Campus Principal', 'Laboratorio', true),
-('d0000001-0000-0000-0000-000000000003', '102', 35, 'Edificio A', 'Campus Principal', 'Teoría', true);
-
--- 7.6 Subjects
-INSERT INTO public.subject (subject_id, code, name, credits, theory_hours, practice_hours, school_id) VALUES
-('e0000001-0000-0000-0000-000000000001', 'IS-101', 'Programación I', 3, 2, 2, 'c0000001-0000-0000-0000-000000000001'),
-('e0000001-0000-0000-0000-000000000002', 'IS-201', 'Estructuras de Datos', 3, 3, 1, 'c0000001-0000-0000-0000-000000000001'),
-('e0000001-0000-0000-0000-000000000003', 'IS-301', 'Bases de Datos', 3, 2, 2, 'c0000001-0000-0000-0000-000000000001');
-
--- 7.7 Academic period
-INSERT INTO public.academic_period (period_id, name, start_date, end_date, active) VALUES
-('f0000001-0000-0000-0000-000000000001', '2026-I', '2026-01-15', '2026-06-15', true);
-
--- 7.8 Teacher (linked to existing user 'Nicole')
-INSERT INTO public.teacher (teacher_id, user_id, availability, department) VALUES
-('10000001-0000-0000-0000-000000000001', 'e7f3c6a4-8fb1-4ba2-b3d4-1c2f3e4a5b6c', 'Lunes a Viernes 8am-12pm', 'Ingeniería de Sistemas');
-
--- 7.9 Groups (with classroom_id and is_active)
-INSERT INTO public.groups (group_id, group_name, capacity, teacher_id, period_id, subject_id, classroom_id, is_active) VALUES
-('11000001-0000-0000-0000-000000000001', 'Programación I - Grupo A', 30, '10000001-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000001', 'd0000001-0000-0000-0000-000000000001', true),
-('11000001-0000-0000-0000-000000000002', 'Programación I - Grupo B', 30, '10000001-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000001', 'd0000001-0000-0000-0000-000000000002', true),
-('11000001-0000-0000-0000-000000000003', 'Estructuras de Datos - Grupo A', 25, '10000001-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000002', 'd0000001-0000-0000-0000-000000000003', true),
-('11000001-0000-0000-0000-000000000004', 'Bases de Datos - Grupo A', 25, '10000001-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000003', 'd0000001-0000-0000-0000-000000000001', true),
-('11000001-0000-0000-0000-000000000005', 'Bases de Datos - Grupo B', 25, '10000001-0000-0000-0000-000000000001', 'f0000001-0000-0000-0000-000000000001', 'e0000001-0000-0000-0000-000000000003', 'd0000001-0000-0000-0000-000000000002', true);
-
--- 7.10 Class hours (with start_time, end_time, start_date, end_date, is_active)
-INSERT INTO public.class_hour (class_hour_id, start_time, end_time, group_id, classroom_id, start_date, end_date, is_active) VALUES
-('12000001-0000-0000-0000-000000000001', '08:00:00', '10:00:00', '11000001-0000-0000-0000-000000000001', 'd0000001-0000-0000-0000-000000000001', '2026-01-15', '2026-06-15', true),
-('12000001-0000-0000-0000-000000000002', '10:00:00', '12:00:00', '11000001-0000-0000-0000-000000000002', 'd0000001-0000-0000-0000-000000000002', '2026-01-15', '2026-06-15', true),
-('12000001-0000-0000-0000-000000000003', '08:00:00', '10:00:00', '11000001-0000-0000-0000-000000000003', 'd0000001-0000-0000-0000-000000000003', '2026-01-15', '2026-06-15', true),
-('12000001-0000-0000-0000-000000000004', '14:00:00', '16:00:00', '11000001-0000-0000-0000-000000000004', 'd0000001-0000-0000-0000-000000000001', '2026-01-15', '2026-06-15', true),
-('12000001-0000-0000-0000-000000000005', '10:00:00', '12:00:00', '11000001-0000-0000-0000-000000000005', 'd0000001-0000-0000-0000-000000000002', '2026-01-15', '2026-06-15', true);
-
--- 7.11 Class_hour_day (join table for ManyToMany)
-INSERT INTO public.class_hour_day (class_hour_id, day_id) VALUES
-('12000001-0000-0000-0000-000000000001', 'a0000001-0000-0000-0000-000000000001'),
-('12000001-0000-0000-0000-000000000002', 'a0000001-0000-0000-0000-000000000002'),
-('12000001-0000-0000-0000-000000000003', 'a0000001-0000-0000-0000-000000000003'),
-('12000001-0000-0000-0000-000000000004', 'a0000001-0000-0000-0000-000000000004'),
-('12000001-0000-0000-0000-000000000005', 'a0000001-0000-0000-0000-000000000005');
-
 -- =========================================================
 -- 8. Re-create ALL foreign-key constraints
---    (now all columns are UUID and data is consistent)
+--    (now all columns are UUID; constraint creation doesn't
+--    require any rows to exist, so this runs safely before
+--    dev-data seeding, if any, inserts rows that satisfy them)
 -- =========================================================
 
 -- school → faculty

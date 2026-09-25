@@ -2,7 +2,7 @@ SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 
 -- =========================================================
--- Usuario de prueba con rol de profesor (TEACHER)
+-- Usuarios de prueba con rol de profesor (TEACHER / DOCENTE)
 -- =========================================================
 
 INSERT INTO public.users (
@@ -51,3 +51,31 @@ INSERT INTO public.user_roles (user_id, role_guid) VALUES
 INSERT INTO public.teacher (availability, department, user_id) VALUES
 ('Lunes a Viernes 14:00-18:00', 'Ingeniería Electrónica', (SELECT user_id FROM public.users WHERE username = 'lramirez')),
 ('Martes y Jueves 8:00-12:00', 'Ingeniería Industrial', (SELECT user_id FROM public.users WHERE username = 'asuarez'));
+
+-- =========================================================
+-- Profesores adicionales (para variedad en pruebas de grupos)
+-- =========================================================
+
+INSERT INTO public.users (
+    account_no_expired,
+    account_no_locked,
+    credential_no_expired,
+    is_enabled,
+    last_session,
+    user_id,
+    first_name,
+    last_name,
+    username,
+    email,
+    password
+) VALUES
+(true, true, true, true, NULL, 'd4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a', 'Patricia', 'Vega',    'pvega',    'pvega@uis.edu.co',    '$2b$10$ZC3Bpd0rUnXN2RHYFmn6F.cOrMvNO87/SnJEMk3Cv3Dt/U8ynesLO'),
+(true, true, true, true, NULL, 'e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b', 'Jorge',    'Herrera', 'jherrera', 'jherrera@uis.edu.co', '$2b$10$ZC3Bpd0rUnXN2RHYFmn6F.cOrMvNO87/SnJEMk3Cv3Dt/U8ynesLO');
+
+INSERT INTO public.user_roles (user_id, role_guid) VALUES
+('d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a', 'b60f3f14-8d1c-4039-9dd6-a8d646a809ff'),
+('e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b', 'b60f3f14-8d1c-4039-9dd6-a8d646a809ff');
+
+INSERT INTO public.teacher (availability, department, user_id) VALUES
+('Lunes, Miércoles y Viernes 10:00-14:00', 'Ingeniería de Sistemas',  (SELECT user_id FROM public.users WHERE username = 'pvega')),
+('Martes y Jueves 14:00-18:00',            'Ingeniería Electrónica', (SELECT user_id FROM public.users WHERE username = 'jherrera'));
