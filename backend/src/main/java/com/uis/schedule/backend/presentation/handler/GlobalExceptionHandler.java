@@ -67,6 +67,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(TeacherNotFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTeacherNotFoundException(TeacherNotFoundException ex) {
+        return build(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     // ─── 400 — Bad request / Validation errors ───────
 
     @ExceptionHandler(InvalidTokenException.class)

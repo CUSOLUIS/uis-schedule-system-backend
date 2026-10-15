@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.uis.schedule.backend.service.exception.ProtectedRoleException;
 import com.uis.schedule.backend.service.exception.UserAlreadyExistsException;
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
 import com.uis.schedule.backend.persistence.entity.PasswordResetTokenEntity;
@@ -66,6 +67,9 @@ public class UserServiceImpl implements UserService {
   private final UserService self;
   private final RevokedTokenRepository revokedTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
+  private final TeacherProfileService teacherProfileService;
+
+  private static final String ADMINISTRATOR_ROLE = "ADMINISTRATOR";
 
   @org.springframework.beans.factory.annotation.Value("${app.password-reset.expiration-hours:2}")
   private int passwordResetExpirationHours;
@@ -82,7 +86,8 @@ public class UserServiceImpl implements UserService {
       EmailService emailService,
       @Lazy UserService self,
       RevokedTokenRepository revokedTokenRepository,
-      RefreshTokenRepository refreshTokenRepository) {
+      RefreshTokenRepository refreshTokenRepository,
+      TeacherProfileService teacherProfileService) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
     this.authenticationManager = authenticationManager;
@@ -94,6 +99,7 @@ public class UserServiceImpl implements UserService {
     this.self = self;
     this.revokedTokenRepository = revokedTokenRepository;
     this.refreshTokenRepository = refreshTokenRepository;
+    this.teacherProfileService = teacherProfileService;
   }
 
   @Override
@@ -171,14 +177,7 @@ public class UserServiceImpl implements UserService {
       String username = (request.getFirstName().substring(0, 1) + request.getLastName() + randomInt)
           .toLowerCase();
 
-      java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
-      if (request.getRoles() != null && !request.getRoles().isEmpty()) {
-        request.getRoles().forEach(roleName -> {
-          roleRepository.findByName(roleName).ifPresent(roles::add);
-        });
-      } else {
-        roleRepository.findByName("USER").ifPresent(roles::add);
-      }
+      java.util.Set<RoleEntity> roles = resolveRoles(request.getRoles());
 
       UserEntity entity = UserEntity.builder()
           .firstName(request.getFirstName())
@@ -193,6 +192,7 @@ public class UserServiceImpl implements UserService {
           .credentialNoExpired(true)
           .build();
       UserEntity savedEntity = userRepository.save(entity);
+      teacherProfileService.ensureFor(savedEntity);
 
       log.info("User created successfully with ID: {}", savedEntity.getUserId());
       return UserMapper.entityToResponse(savedEntity);
@@ -201,6 +201,8 @@ public class UserServiceImpl implements UserService {
       log.error("Data integrity violation while creating user: {}", request.getEmail(), e);
       throw new IllegalArgumentException(
           "User creation failed: The email '" + request.getEmail() + "' may already be in use.");
+    } catch (RuntimeException e) {
+      throw e;
     } catch (Exception e) {
       log.error("Unexpected error while creating user: {}", request.getEmail(), e);
       throw new RuntimeException("Failed to create user", e);
@@ -228,18 +230,20 @@ public class UserServiceImpl implements UserService {
       request.setEmail(request.getEmail().toLowerCase());
     }
 
+    java.util.Set<RoleEntity> resolvedRoles = request.getRoles() != null
+        ? resolveRoles(request.getRoles())
+        : null;
+    assertAdministratorCanBeUpdated(userToUpdate, request, resolvedRoles);
+
     try {
       UserMapper.updateEntityFromRequest(userToUpdate, request);
 
-      if (request.getRoles() != null) {
-        java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
-        request.getRoles().forEach(roleName -> {
-          roleRepository.findByName(roleName).ifPresent(roles::add);
-        });
-        userToUpdate.setRoles(roles);
+      if (resolvedRoles != null) {
+        userToUpdate.setRoles(resolvedRoles);
       }
 
       UserEntity updatedUser = userRepository.save(userToUpdate);
+      teacherProfileService.ensureFor(updatedUser);
 
       log.info("User updated successfully with ID: {}", id);
       return UserMapper.entityToResponse(updatedUser);
@@ -248,6 +252,8 @@ public class UserServiceImpl implements UserService {
       log.error("Data integrity violation while updating user: {}", id, e);
       throw new IllegalArgumentException(
           "Email '" + request.getEmail() + "' is already in use by another user.");
+    } catch (RuntimeException e) {
+      throw e;
     } catch (Exception e) {
       log.error("Unexpected error while updating user: {}", id, e);
       throw new RuntimeException("Failed to update user", e);
@@ -309,13 +315,9 @@ public class UserServiceImpl implements UserService {
       throw new IllegalArgumentException("User is already disabled (soft-deleted)");
     }
 
-    // Protection: An admin cannot delete another admin
-    boolean isTargetAdmin = user.getRoles().stream()
-        .anyMatch(role -> role.getName().equals("ADMINISTRATOR"));
-
-    if (isTargetAdmin) {
+    if (hasRole(user, ADMINISTRATOR_ROLE)) {
       log.warn("Attempt to delete an ADMINISTRATOR account blocked for ID: {}", id);
-      throw new IllegalStateException("Security protection: Users with ADMINISTRATOR role cannot be deleted.");
+      throw new ProtectedRoleException("Security protection: Users with ADMINISTRATOR role cannot be deleted.");
     }
 
     user.setEnable(false);
@@ -603,5 +605,69 @@ public class UserServiceImpl implements UserService {
 
     log.info("Refresh exitoso para el usuario {}", email);
     return new AuthResponse(newAccessToken, newRefreshToken, "Token renovado correctamente");
+  }
+
+  /**
+   * Resolves role names to persisted roles. Unknown names are rejected with 400.
+   * An empty or missing set falls back to the USER role.
+   */
+  private java.util.Set<RoleEntity> resolveRoles(java.util.Set<String> roleNames) {
+    java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+    if (roleNames == null || roleNames.isEmpty()) {
+      RoleEntity defaultRole = roleRepository.findByName("USER")
+          .orElseThrow(() -> new IllegalArgumentException("Default role USER is not configured"));
+      roles.add(defaultRole);
+      return roles;
+    }
+
+    for (String roleName : roleNames) {
+      if (roleName == null || roleName.isBlank()) {
+        throw new IllegalArgumentException("Role name cannot be blank");
+      }
+      RoleEntity role = roleRepository.findByName(roleName)
+          .orElseThrow(() -> new IllegalArgumentException("Unknown role: " + roleName));
+      roles.add(role);
+    }
+    return roles;
+  }
+
+  private void assertAdministratorCanBeUpdated(UserEntity user, UpdateUserRequest request,
+      java.util.Set<RoleEntity> resolvedRoles) {
+    if (!hasRole(user, ADMINISTRATOR_ROLE)) {
+      return;
+    }
+
+    if (Boolean.FALSE.equals(request.getActive())) {
+      log.warn("Attempt to disable ADMINISTRATOR account blocked for ID: {}", user.getUserId());
+      throw new ProtectedRoleException(
+          "Security protection: Users with ADMINISTRATOR role cannot be disabled.");
+    }
+
+    if (resolvedRoles == null) {
+      return;
+    }
+
+    boolean keepsAdministrator = resolvedRoles.stream()
+        .anyMatch(role -> ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName()));
+    if (keepsAdministrator) {
+      return;
+    }
+
+    long otherAdministrators = userRepository.countByRoles_NameAndIsEnableTrueAndUserIdNot(
+        ADMINISTRATOR_ROLE, user.getUserId());
+    if (otherAdministrators == 0) {
+      log.warn("Attempt to remove the last ADMINISTRATOR blocked for ID: {}", user.getUserId());
+      throw new ProtectedRoleException(
+          "Security protection: The system must keep at least one active administrator.");
+    }
+
+    log.warn("Attempt to strip ADMINISTRATOR role blocked for ID: {}", user.getUserId());
+    throw new ProtectedRoleException(
+        "Security protection: Users with ADMINISTRATOR role cannot be stripped of that role.");
+  }
+
+  private boolean hasRole(UserEntity user, String roleName) {
+    return user.getRoles() != null && user.getRoles().stream()
+        .anyMatch(role -> role.getName() != null && role.getName().equalsIgnoreCase(roleName));
   }
 }

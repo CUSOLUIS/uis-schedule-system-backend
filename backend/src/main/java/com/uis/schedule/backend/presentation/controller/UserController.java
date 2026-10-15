@@ -112,11 +112,11 @@ public class UserController {
         .body(ApiResponse.success(createdUser, "User created successfully"));
   }
 
-  @Operation(summary = "Update an existing user", description = "Updates an existing user's details by their ID. Only provided fields will be updated.")
+  @Operation(summary = "Update an existing user", description = "Updates an existing user's details by their ID. Only provided fields will be updated. Unknown roles are rejected. Administrator accounts cannot be disabled or stripped of the ADMINISTRATOR role.")
   @ApiResponses(value = {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User updated successfully"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid user data or email already in use"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid user data, unknown role, or email already in use"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - missing permissions, or the target administrator cannot be disabled or stripped of the ADMINISTRATOR role"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found with the specified ID"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })
@@ -129,10 +129,10 @@ public class UserController {
     return ResponseEntity.ok(ApiResponse.success(updatedUser, "User updated successfully"));
   }
 
-  @Operation(summary = "Delete a user by ID", description = "Deletes a user from the system by their ID.")
+  @Operation(summary = "Delete a user by ID", description = "Soft-deletes a user by their ID. Users with the ADMINISTRATOR role cannot be deleted.")
   @ApiResponses(value = {
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User deleted successfully"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - User does not have the required permissions"),
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden - missing permissions, or the target user is an ADMINISTRATOR"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found with the specified ID"),
       @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
   })

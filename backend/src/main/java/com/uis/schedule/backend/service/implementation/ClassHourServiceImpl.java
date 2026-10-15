@@ -9,6 +9,7 @@ import com.uis.schedule.backend.persistence.repository.ClassroomRepository;
 import com.uis.schedule.backend.persistence.repository.DayWeekRepository;
 import com.uis.schedule.backend.persistence.repository.GroupRepository;
 import com.uis.schedule.backend.presentation.dto.*;
+import com.uis.schedule.backend.service.exception.CapacityConstraintException;
 import com.uis.schedule.backend.service.exception.ClassHourNotFoundException;
 import com.uis.schedule.backend.service.exception.ScheduleConflictException;
 import com.uis.schedule.backend.service.interfaces.ClassHourService;
@@ -170,6 +171,8 @@ public class ClassHourServiceImpl implements ClassHourService {
             throw new IllegalArgumentException("Cannot create a class hour for a disabled classroom.");
         }
 
+        validateGroupFitsClassroom(group, classroom);
+
         // Validate days
         List<UUID> dayIds = request.getDayIds();
         if (dayIds == null || dayIds.isEmpty()) {
@@ -269,6 +272,10 @@ public class ClassHourServiceImpl implements ClassHourService {
         // Validate date range
         validateDateRange(classHourToUpdate.getStartDate(), classHourToUpdate.getEndDate());
 
+        if (request.getGroupId() != null || request.getClassroomId() != null) {
+            validateGroupFitsClassroom(classHourToUpdate.getGroupId(), classHourToUpdate.getClassroomId());
+        }
+
         // Validate no overlap if schedule-relevant fields changed
         boolean scheduleChanged = request.getDayIds() != null
                 || request.getClassroomId() != null
@@ -326,6 +333,21 @@ public class ClassHourServiceImpl implements ClassHourService {
     }
 
     // ─── Private validation helpers ──────────────────────────────────
+
+    /**
+     * The classroom that matters is the one stored on the class hour.
+     * Group capacity cannot exceed that classroom's max capacity.
+     */
+    private void validateGroupFitsClassroom(GroupEntity group, ClassroomEntity classroom) {
+        if (group == null || classroom == null || group.getCapacity() == null || classroom.getMaxCapacity() == null) {
+            return;
+        }
+        if (group.getCapacity() > classroom.getMaxCapacity()) {
+            throw new CapacityConstraintException(
+                    "Group capacity (" + group.getCapacity() + ") cannot exceed classroom max capacity ("
+                            + classroom.getMaxCapacity() + ").");
+        }
+    }
 
     private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
         if (startTime == null || endTime == null) {
