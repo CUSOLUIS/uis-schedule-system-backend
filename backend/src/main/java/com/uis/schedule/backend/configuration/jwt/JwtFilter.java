@@ -95,6 +95,15 @@ public class JwtFilter extends OncePerRequestFilter {
           }
 
           UserDetails userDetails = customerDetailService.loadUserByUsername(username);
+          // El token sigue siendo válido hasta expirar; una cuenta deshabilitada pierde el acceso ya.
+          if (!userDetails.isEnabled()) {
+            log.warn("Rejected request: account '{}' is disabled", username);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"token\": null, \"message\": \"Account is disabled\"}");
+            return;
+          }
+
           if (jwtUtil.validateToken(token, userDetails)) {
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                 userDetails, null, authorities);

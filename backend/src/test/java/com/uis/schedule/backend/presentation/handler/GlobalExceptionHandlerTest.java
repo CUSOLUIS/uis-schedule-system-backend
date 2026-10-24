@@ -1,6 +1,8 @@
 package com.uis.schedule.backend.presentation.handler;
 
 import com.uis.schedule.backend.presentation.dto.ApiResponse;
+import com.uis.schedule.backend.service.exception.InvalidSessionTokenException;
+import com.uis.schedule.backend.service.exception.InvalidTokenException;
 import com.uis.schedule.backend.service.exception.ProtectedRoleException;
 import com.uis.schedule.backend.service.exception.RoleInUseException;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,26 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals("An internal server error occurred", response.getBody().getMessage());
+    }
+
+    @Test
+    void invalidSessionToken_returns401() {
+        ResponseEntity<ApiResponse<Object>> response = handler.handleInvalidSessionTokenException(
+                new InvalidSessionTokenException("Refresh token revocado o expirado"));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Refresh token revocado o expirado", response.getBody().getMessage());
+    }
+
+    @Test
+    void invalidInvitationToken_returns400() {
+        ResponseEntity<ApiResponse<Object>> response = handler.handleInvalidTokenException(
+                new InvalidTokenException("El enlace no es válido"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("El enlace no es válido", response.getBody().getMessage());
     }
 
     @Test

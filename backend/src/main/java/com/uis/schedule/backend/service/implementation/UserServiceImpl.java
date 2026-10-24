@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.uis.schedule.backend.service.exception.ProtectedRoleException;
 import com.uis.schedule.backend.service.exception.UserAlreadyExistsException;
 import com.uis.schedule.backend.configuration.jwt.JwtUtil;
 import com.uis.schedule.backend.persistence.entity.PasswordResetTokenEntity;
@@ -35,7 +36,7 @@ import com.uis.schedule.backend.presentation.dto.UpdateUserRequest;
 import com.uis.schedule.backend.presentation.dto.UserDetailDTO;
 import com.uis.schedule.backend.presentation.dto.UserListDTO;
 import com.uis.schedule.backend.presentation.dto.UserResponse;
-import com.uis.schedule.backend.service.exception.InvalidTokenException;
+import com.uis.schedule.backend.service.exception.InvalidSessionTokenException;
 import com.uis.schedule.backend.persistence.repository.RevokedTokenRepository;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.UserService;
@@ -66,6 +67,8 @@ public class UserServiceImpl implements UserService {
   private final UserService self;
   private final RevokedTokenRepository revokedTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
+
+  private static final String ADMINISTRATOR_ROLE = "ADMINISTRATOR";
 
   @org.springframework.beans.factory.annotation.Value("${app.password-reset.expiration-hours:2}")
   private int passwordResetExpirationHours;
@@ -166,19 +169,13 @@ public class UserServiceImpl implements UserService {
 
     log.info("Creating new user with email: {}", request.getEmail());
 
+    // Fuera del try: un rol inexistente debe llegar como 400, no envuelto en 500.
+    java.util.Set<RoleEntity> roles = resolveRoles(request.getRoles());
+
     try {
       String email = request.getEmail().toLowerCase();
       String username = (request.getFirstName().substring(0, 1) + request.getLastName() + randomInt)
           .toLowerCase();
-
-      java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
-      if (request.getRoles() != null && !request.getRoles().isEmpty()) {
-        request.getRoles().forEach(roleName -> {
-          roleRepository.findByName(roleName).ifPresent(roles::add);
-        });
-      } else {
-        roleRepository.findByName("USER").ifPresent(roles::add);
-      }
 
       UserEntity entity = UserEntity.builder()
           .firstName(request.getFirstName())
@@ -228,18 +225,25 @@ public class UserServiceImpl implements UserService {
       request.setEmail(request.getEmail().toLowerCase());
     }
 
+    // Se valida antes de tocar la entidad para no dejar cambios parciales.
+    java.util.Set<RoleEntity> resolvedRoles = request.getRoles() != null
+        ? resolveRoles(request.getRoles())
+        : null;
+    assertAdministratorCanBeUpdated(userToUpdate, request, resolvedRoles);
+    boolean wasEnabled = userToUpdate.isEnable();
+
     try {
       UserMapper.updateEntityFromRequest(userToUpdate, request);
 
-      if (request.getRoles() != null) {
-        java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
-        request.getRoles().forEach(roleName -> {
-          roleRepository.findByName(roleName).ifPresent(roles::add);
-        });
-        userToUpdate.setRoles(roles);
+      if (resolvedRoles != null) {
+        userToUpdate.setRoles(resolvedRoles);
       }
 
       UserEntity updatedUser = userRepository.save(userToUpdate);
+      if (wasEnabled && !updatedUser.isEnable()) {
+        // Una cuenta deshabilitada no debe poder renovar su sesión.
+        refreshTokenRepository.revokeAllByUserId(updatedUser.getUserId());
+      }
 
       log.info("User updated successfully with ID: {}", id);
       return UserMapper.entityToResponse(updatedUser);
@@ -309,17 +313,14 @@ public class UserServiceImpl implements UserService {
       throw new IllegalArgumentException("User is already disabled (soft-deleted)");
     }
 
-    // Protection: An admin cannot delete another admin
-    boolean isTargetAdmin = user.getRoles().stream()
-        .anyMatch(role -> role.getName().equals("ADMINISTRATOR"));
-
-    if (isTargetAdmin) {
+    if (hasRole(user, ADMINISTRATOR_ROLE)) {
       log.warn("Attempt to delete an ADMINISTRATOR account blocked for ID: {}", id);
-      throw new IllegalStateException("Security protection: Users with ADMINISTRATOR role cannot be deleted.");
+      throw new ProtectedRoleException("Security protection: Users with ADMINISTRATOR role cannot be deleted.");
     }
 
     user.setEnable(false);
     userRepository.save(user);
+    refreshTokenRepository.revokeAllByUserId(user.getUserId());
 
     log.info("User soft-deleted successfully with ID: {}", id);
   }
@@ -478,6 +479,8 @@ public class UserServiceImpl implements UserService {
 
     userRepository.save(user);
     passwordResetTokenRepository.save(resetToken);
+    // Si la contraseña anterior estaba comprometida, sus sesiones no deben seguir renovándose.
+    refreshTokenRepository.revokeAllByUserId(user.getUserId());
   }
 
   @Override
@@ -499,12 +502,13 @@ public class UserServiceImpl implements UserService {
 
     user.setPassword(passwordEncoder.encode(newPassword));
     userRepository.save(user);
+    refreshTokenRepository.revokeAllByUserId(user.getUserId());
   }
 
   @Override
   public void logout(String accessToken, String refreshToken) {
     if (accessToken == null || accessToken.isBlank()) {
-      throw new InvalidTokenException("Token inválido");
+      throw new InvalidSessionTokenException("Token inválido");
     }
 
     String jti;
@@ -515,11 +519,11 @@ public class UserServiceImpl implements UserService {
       expiresAt = jwtUtil.extractExpirationAsLocalDateTime(accessToken);
       username = jwtUtil.extractUserName(accessToken);
     } catch (Exception ex) {
-      throw new InvalidTokenException("Token inválido o expirado");
+      throw new InvalidSessionTokenException("Token inválido o expirado");
     }
 
     if (jti == null || jti.isBlank()) {
-      throw new InvalidTokenException("El token no contiene un identificador válido");
+      throw new InvalidSessionTokenException("El token no contiene un identificador válido");
     }
 
     if (!revokedTokenRepository.existsByJti(jti)) {
@@ -556,7 +560,7 @@ public class UserServiceImpl implements UserService {
   @Override
   public AuthResponse refresh(String refreshToken) {
     if (refreshToken == null || refreshToken.isBlank()) {
-      throw new InvalidTokenException("Refresh token inválido");
+      throw new InvalidSessionTokenException("Refresh token inválido");
     }
 
     String jti;
@@ -568,22 +572,27 @@ public class UserServiceImpl implements UserService {
       email = jwtUtil.extractUserName(refreshToken);
       jwtUtil.extractExpirationAsLocalDateTime(refreshToken);
     } catch (Exception ex) {
-      throw new InvalidTokenException("Refresh token inválido o expirado");
+      throw new InvalidSessionTokenException("Refresh token inválido o expirado");
     }
 
     if (!JwtUtil.TOKEN_TYPE_REFRESH.equals(tokenType)) {
-      throw new InvalidTokenException("El token proporcionado no es un refresh token");
+      throw new InvalidSessionTokenException("El token proporcionado no es un refresh token");
     }
 
     RefreshTokenEntity storedToken = refreshTokenRepository.findByJti(jti)
-        .orElseThrow(() -> new InvalidTokenException("Refresh token no reconocido"));
+        .orElseThrow(() -> new InvalidSessionTokenException("Refresh token no reconocido"));
 
     if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-      throw new InvalidTokenException("Refresh token revocado o expirado");
+      throw new InvalidSessionTokenException("Refresh token revocado o expirado");
     }
 
     UserEntity user = userRepository.findUserEntityByEmailOrUsername(email, email)
         .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+
+    if (!user.isEnable()) {
+      refreshTokenRepository.revokeByJti(jti);
+      throw new InvalidSessionTokenException("La cuenta está deshabilitada");
+    }
 
     // Rotación: se revoca el refresh token usado y se emite uno nuevo, para
     // limitar la ventana de uso de cada refresh token en caso de robo.
@@ -603,5 +612,59 @@ public class UserServiceImpl implements UserService {
 
     log.info("Refresh exitoso para el usuario {}", email);
     return new AuthResponse(newAccessToken, newRefreshToken, "Token renovado correctamente");
+  }
+
+  /**
+   * Traduce nombres de rol a roles persistidos. Un nombre inexistente se rechaza
+   * (400) en lugar de ignorarse; sin roles se asigna USER.
+   */
+  private java.util.Set<RoleEntity> resolveRoles(java.util.Set<String> roleNames) {
+    java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
+    if (roleNames == null || roleNames.isEmpty()) {
+      RoleEntity defaultRole = roleRepository.findByName("USER")
+          .orElseThrow(() -> new IllegalArgumentException("Default role USER is not configured"));
+      roles.add(defaultRole);
+      return roles;
+    }
+
+    for (String roleName : roleNames) {
+      if (roleName == null || roleName.isBlank()) {
+        throw new IllegalArgumentException("Role name cannot be blank");
+      }
+      RoleEntity role = roleRepository.findByName(roleName)
+          .orElseThrow(() -> new IllegalArgumentException("Unknown role: " + roleName));
+      roles.add(role);
+    }
+    return roles;
+  }
+
+  /**
+   * Un ADMINISTRATOR no puede deshabilitarse ni perder su rol: como tampoco se
+   * puede borrar, el sistema conserva siempre al menos un administrador activo.
+   */
+  private void assertAdministratorCanBeUpdated(UserEntity user, UpdateUserRequest request,
+      java.util.Set<RoleEntity> resolvedRoles) {
+    if (!hasRole(user, ADMINISTRATOR_ROLE)) {
+      return;
+    }
+
+    if (Boolean.FALSE.equals(request.getActive())) {
+      log.warn("Attempt to disable ADMINISTRATOR account blocked for ID: {}", user.getUserId());
+      throw new ProtectedRoleException(
+          "Security protection: Users with ADMINISTRATOR role cannot be disabled.");
+    }
+
+    boolean stripsAdministrator = resolvedRoles != null && resolvedRoles.stream()
+        .noneMatch(role -> ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName()));
+    if (stripsAdministrator) {
+      log.warn("Attempt to strip ADMINISTRATOR role blocked for ID: {}", user.getUserId());
+      throw new ProtectedRoleException(
+          "Security protection: Users with ADMINISTRATOR role cannot be stripped of that role.");
+    }
+  }
+
+  private boolean hasRole(UserEntity user, String roleName) {
+    return user.getRoles() != null && user.getRoles().stream()
+        .anyMatch(role -> role.getName() != null && role.getName().equalsIgnoreCase(roleName));
   }
 }
