@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.persistence.repository;
 
 import com.uis.schedule.backend.persistence.entity.ClassHourEntity;
+import com.uis.schedule.backend.presentation.dto.TeacherScheduleEntryDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -138,4 +139,23 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    /**
+     * Horario semanal del profesor: una fila por franja y día, solo franjas y grupos activos.
+     * Se proyecta directo al DTO para no cargar las relaciones EAGER de cada entidad (evita N+1).
+     * El aula es la de la franja, que es la que reserva el espacio.
+     */
+    @Query("SELECT new com.uis.schedule.backend.presentation.dto.TeacherScheduleEntryDTO(" +
+           "ch.classHourId, d.name, ch.startTime, ch.endTime, " +
+           "g.groupId, g.name, g.capacity, s.code, s.name, s.credits, c.number, c.building) " +
+           "FROM ClassHourEntity ch " +
+           "JOIN ch.days d " +
+           "JOIN ch.groupId g " +
+           "JOIN g.subjectId s " +
+           "LEFT JOIN ch.classroomId c " +
+           "WHERE g.teacherId.teacherId = :teacherId " +
+           "AND ch.isActive = true " +
+           "AND g.isActive = true " +
+           "ORDER BY ch.startTime")
+    List<TeacherScheduleEntryDTO> findScheduleEntriesByTeacherId(@Param("teacherId") UUID teacherId);
 }
