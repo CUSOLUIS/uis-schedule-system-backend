@@ -113,7 +113,9 @@ public class RoleServiceImpl implements RoleService {
 
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while creating role: {}", request.getName(), e);
-            throw new IllegalArgumentException("Role creation failed: The role '" + request.getName() + "' may already exist.");
+            throw e;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Unexpected error while creating role: {}", request.getName(), e);
             throw new RuntimeException("Failed to create role", e);
@@ -152,7 +154,9 @@ public class RoleServiceImpl implements RoleService {
 
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while updating role: {}", id, e);
-            throw new IllegalArgumentException("Role name '" + request.getName() + "' is already in use.");
+            throw e;
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Unexpected error while updating role: {}", id, e);
             throw new RuntimeException("Failed to update role", e);

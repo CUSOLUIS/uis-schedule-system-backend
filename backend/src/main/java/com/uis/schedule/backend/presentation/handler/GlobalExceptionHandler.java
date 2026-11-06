@@ -9,9 +9,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -113,7 +117,18 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, detail);
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String name = ex.getName() != null ? ex.getName() : "parameter";
+        return build(HttpStatus.BAD_REQUEST, "Invalid value for '" + name + "'.");
+    }
+
     // ─── 401 — Authentication failures ────────────
+
+    @ExceptionHandler(InvalidSessionTokenException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInvalidSessionTokenException(InvalidSessionTokenException ex) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponse<Object>> handleAuthenticationException(AuthenticationException ex) {
@@ -167,6 +182,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         return build(HttpStatus.CONFLICT, "The operation violates a uniqueness or integrity constraint.");
+    }
+
+    // ─── 404 — Unknown route ──────────────────────
+
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiResponse<Object>> handleUnknownRoute(Exception ex) {
+        return build(HttpStatus.NOT_FOUND, "The requested resource was not found.");
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        return build(HttpStatus.METHOD_NOT_ALLOWED, "HTTP method is not supported for this resource.");
     }
 
     // ─── 422 — Unprocessable entity (business rules) ──

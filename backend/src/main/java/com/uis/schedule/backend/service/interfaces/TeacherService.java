@@ -1,11 +1,18 @@
 package com.uis.schedule.backend.service.interfaces;
 
+import java.util.UUID;
+
+import com.uis.schedule.backend.presentation.dto.PaginatedResponse;
 import com.uis.schedule.backend.presentation.dto.TeacherDTO;
 
 /**
  * Read access to teacher profiles linked to user accounts.
  */
 public interface TeacherService {
+
+    PaginatedResponse<TeacherDTO> listTeachers(int page, int size);
+
+    TeacherDTO findTeacherById(UUID teacherId);
 
     /**
      * Returns the teacher profile of the authenticated account.

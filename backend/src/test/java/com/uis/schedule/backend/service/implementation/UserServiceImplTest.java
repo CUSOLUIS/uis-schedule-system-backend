@@ -89,6 +89,19 @@ class UserServiceImplTest {
 
         assertEquals("Security protection: Users with ADMINISTRATOR role cannot be deleted.", ex.getMessage());
         verify(userRepository, never()).save(any());
+        verify(refreshTokenRepository, never()).revokeAllByUserId(any());
+    }
+
+    @Test
+    void deleteUser_nonAdmin_revokesRefreshTokens() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = enabledUser(userId, role("STUDENT"));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        userService.deleteUser(userId);
+
+        verify(refreshTokenRepository).revokeAllByUserId(userId);
     }
 
     @Test

@@ -36,7 +36,7 @@ import com.uis.schedule.backend.presentation.dto.UpdateUserRequest;
 import com.uis.schedule.backend.presentation.dto.UserDetailDTO;
 import com.uis.schedule.backend.presentation.dto.UserListDTO;
 import com.uis.schedule.backend.presentation.dto.UserResponse;
-import com.uis.schedule.backend.service.exception.InvalidTokenException;
+import com.uis.schedule.backend.service.exception.InvalidSessionTokenException;
 import com.uis.schedule.backend.persistence.repository.RevokedTokenRepository;
 import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.UserService;
@@ -199,8 +199,7 @@ public class UserServiceImpl implements UserService {
 
     } catch (DataIntegrityViolationException e) {
       log.error("Data integrity violation while creating user: {}", request.getEmail(), e);
-      throw new IllegalArgumentException(
-          "User creation failed: The email '" + request.getEmail() + "' may already be in use.");
+      throw e;
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
@@ -234,6 +233,7 @@ public class UserServiceImpl implements UserService {
         ? resolveRoles(request.getRoles())
         : null;
     assertAdministratorCanBeUpdated(userToUpdate, request, resolvedRoles);
+    boolean wasEnabled = userToUpdate.isEnable();
 
     try {
       UserMapper.updateEntityFromRequest(userToUpdate, request);
@@ -243,6 +243,9 @@ public class UserServiceImpl implements UserService {
       }
 
       UserEntity updatedUser = userRepository.save(userToUpdate);
+      if (wasEnabled && !updatedUser.isEnable()) {
+        refreshTokenRepository.revokeAllByUserId(updatedUser.getUserId());
+      }
       teacherProfileService.ensureFor(updatedUser);
 
       log.info("User updated successfully with ID: {}", id);
@@ -250,8 +253,7 @@ public class UserServiceImpl implements UserService {
 
     } catch (DataIntegrityViolationException e) {
       log.error("Data integrity violation while updating user: {}", id, e);
-      throw new IllegalArgumentException(
-          "Email '" + request.getEmail() + "' is already in use by another user.");
+      throw e;
     } catch (RuntimeException e) {
       throw e;
     } catch (Exception e) {
@@ -322,6 +324,7 @@ public class UserServiceImpl implements UserService {
 
     user.setEnable(false);
     userRepository.save(user);
+    refreshTokenRepository.revokeAllByUserId(user.getUserId());
 
     log.info("User soft-deleted successfully with ID: {}", id);
   }
@@ -480,6 +483,7 @@ public class UserServiceImpl implements UserService {
 
     userRepository.save(user);
     passwordResetTokenRepository.save(resetToken);
+    refreshTokenRepository.revokeAllByUserId(user.getUserId());
   }
 
   @Override
@@ -501,12 +505,13 @@ public class UserServiceImpl implements UserService {
 
     user.setPassword(passwordEncoder.encode(newPassword));
     userRepository.save(user);
+    refreshTokenRepository.revokeAllByUserId(user.getUserId());
   }
 
   @Override
   public void logout(String accessToken, String refreshToken) {
     if (accessToken == null || accessToken.isBlank()) {
-      throw new InvalidTokenException("Token inválido");
+      throw new InvalidSessionTokenException("Token inválido");
     }
 
     String jti;
@@ -517,11 +522,11 @@ public class UserServiceImpl implements UserService {
       expiresAt = jwtUtil.extractExpirationAsLocalDateTime(accessToken);
       username = jwtUtil.extractUserName(accessToken);
     } catch (Exception ex) {
-      throw new InvalidTokenException("Token inválido o expirado");
+      throw new InvalidSessionTokenException("Token inválido o expirado");
     }
 
     if (jti == null || jti.isBlank()) {
-      throw new InvalidTokenException("El token no contiene un identificador válido");
+      throw new InvalidSessionTokenException("El token no contiene un identificador válido");
     }
 
     if (!revokedTokenRepository.existsByJti(jti)) {
@@ -558,7 +563,7 @@ public class UserServiceImpl implements UserService {
   @Override
   public AuthResponse refresh(String refreshToken) {
     if (refreshToken == null || refreshToken.isBlank()) {
-      throw new InvalidTokenException("Refresh token inválido");
+      throw new InvalidSessionTokenException("Refresh token inválido");
     }
 
     String jti;
@@ -570,22 +575,27 @@ public class UserServiceImpl implements UserService {
       email = jwtUtil.extractUserName(refreshToken);
       jwtUtil.extractExpirationAsLocalDateTime(refreshToken);
     } catch (Exception ex) {
-      throw new InvalidTokenException("Refresh token inválido o expirado");
+      throw new InvalidSessionTokenException("Refresh token inválido o expirado");
     }
 
     if (!JwtUtil.TOKEN_TYPE_REFRESH.equals(tokenType)) {
-      throw new InvalidTokenException("El token proporcionado no es un refresh token");
+      throw new InvalidSessionTokenException("El token proporcionado no es un refresh token");
     }
 
     RefreshTokenEntity storedToken = refreshTokenRepository.findByJti(jti)
-        .orElseThrow(() -> new InvalidTokenException("Refresh token no reconocido"));
+        .orElseThrow(() -> new InvalidSessionTokenException("Refresh token no reconocido"));
 
     if (storedToken.isRevoked() || storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-      throw new InvalidTokenException("Refresh token revocado o expirado");
+      throw new InvalidSessionTokenException("Refresh token revocado o expirado");
     }
 
     UserEntity user = userRepository.findUserEntityByEmailOrUsername(email, email)
         .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado"));
+
+    if (!user.isEnable()) {
+      refreshTokenRepository.revokeByJti(jti);
+      throw new InvalidSessionTokenException("La cuenta está deshabilitada");
+    }
 
     // Rotación: se revoca el refresh token usado y se emite uno nuevo, para
     // limitar la ventana de uso de cada refresh token en caso de robo.

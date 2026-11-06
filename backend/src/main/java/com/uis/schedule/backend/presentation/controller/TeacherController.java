@@ -1,6 +1,7 @@
 package com.uis.schedule.backend.presentation.controller;
 
 import com.uis.schedule.backend.presentation.dto.ApiResponse;
+import com.uis.schedule.backend.presentation.dto.PaginatedResponse;
 import com.uis.schedule.backend.presentation.dto.TeacherDTO;
 import com.uis.schedule.backend.service.interfaces.TeacherService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,12 +12,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 /**
- * Teacher profile endpoints. {@code GET /api/teachers/me} resolves the teacherId
- * required by {@code GET /api/class-hours/teacher/{teacherId}}.
+ * Teacher profile endpoints. {@code GET /api/teachers} feeds the group teacher selector.
+ * {@code GET /api/teachers/me} resolves the teacherId used by class-hour queries.
  */
 @SecurityRequirement(name = "bearerAuth")
 @RestController
@@ -28,6 +33,21 @@ public class TeacherController {
 
     public TeacherController(TeacherService teacherService) {
         this.teacherService = teacherService;
+    }
+
+    @Operation(summary = "List teacher profiles",
+            description = "Paginated teacher profiles for the group teacher selector. Requires ADMINISTRATOR.")
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Teachers retrieved"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden")
+    })
+    @GetMapping
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<PaginatedResponse<TeacherDTO>>> listTeachers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PaginatedResponse<TeacherDTO> teachers = teacherService.listTeachers(page, size);
+        return ResponseEntity.ok(ApiResponse.success(teachers, "Teachers retrieved successfully"));
     }
 
     @Operation(summary = "Get the authenticated teacher's profile",
@@ -43,5 +63,14 @@ public class TeacherController {
     public ResponseEntity<ApiResponse<TeacherDTO>> getCurrentTeacher(Authentication authentication) {
         TeacherDTO teacher = teacherService.getCurrentTeacher(authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(teacher, "Teacher profile retrieved successfully"));
+    }
+
+    @Operation(summary = "Get a teacher profile by id",
+            description = "Returns one teacher profile, including the linked user. Requires ADMINISTRATOR.")
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRATOR')")
+    public ResponseEntity<ApiResponse<TeacherDTO>> getTeacherById(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                teacherService.findTeacherById(id), "Teacher profile retrieved successfully"));
     }
 }

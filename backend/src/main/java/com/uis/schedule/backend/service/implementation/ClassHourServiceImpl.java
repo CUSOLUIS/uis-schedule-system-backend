@@ -211,7 +211,7 @@ public class ClassHourServiceImpl implements ClassHourService {
 
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while creating class hour", e);
-            throw new IllegalArgumentException("Class hour creation failed: A class hour with the same attributes may already exist.");
+            throw e;
         }
     }
 
@@ -304,7 +304,7 @@ public class ClassHourServiceImpl implements ClassHourService {
 
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while updating class hour: {}", id, e);
-            throw new IllegalArgumentException("Class hour update failed: A class hour with the same attributes may already exist.");
+            throw e;
         }
     }
 
