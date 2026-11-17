@@ -15,6 +15,19 @@ jobs:
         working-directory: ./backend
         run: mvn compile -Dmaven.compiler.release=17 -q
 
+      # Respalda siempre antes de tocar la carpeta de despliegue, para que un
+      # reintento tras un fallo también deje copia.
+      - name: Backup scheduleDB antes de reconstruir
+        working-directory: /home/dev/proyects/uis-schedule-system-backend
+        run: |
+          ROOT_DIR="$(git rev-parse --show-superproject-working-tree)"
+          [ -n "$ROOT_DIR" ] || ROOT_DIR="$(cd .. && pwd)"
+          if [ ! -x "$ROOT_DIR/scripts/db-backup.sh" ]; then
+            echo "::error::No se encontró scripts/db-backup.sh en el repo raíz; actualizar el clon raíz (git pull)."
+            exit 1
+          fi
+          "$ROOT_DIR/scripts/db-backup.sh"
+
       - name: Actualizar código en carpeta de despliegue
         working-directory: /home/dev/proyects/uis-schedule-system-backend
         run: |
