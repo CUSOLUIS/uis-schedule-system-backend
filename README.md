@@ -83,7 +83,7 @@ Las principales entidades del dominio son:
 
    | Variable | Descripción |
    |---|---|
-   | `SPRING_PROFILE` | Perfil activo (`dev` para local, `prod` para Docker) |
+   | `SPRING_PROFILE` | Perfil activo: `dev` carga los datos de prueba; `prod` (o vacío) no los carga y retira los antiguos (ver [Migraciones](#migraciones-de-base-de-datos)) |
    | `DB_HOST` | Host de PostgreSQL |
    | `DB_PORT` | Puerto de PostgreSQL |
    | `DB_NAME` | Nombre de la base de datos |
@@ -190,14 +190,36 @@ La mayoría de los endpoints de gestión de usuarios, roles e invitaciones está
 
 ## Migraciones de base de datos
 
-Las migraciones se gestionan con Flyway y se ubican en `src/main/resources/db/migration`:
+Las migraciones se gestionan con Flyway en tres carpetas de `src/main/resources/`. `SPRING_PROFILE` decide cuáles se aplican:
 
-| Script | Descripción |
-|---|---|
-| `V1__init.sql` | Creación del esquema inicial (usuarios, roles, facultades, escuelas, materias, docentes, grupos, clases, horarios, auditoría) |
-| `V2__cusol_data_dml.sql` | Datos iniciales (seed) de roles y catálogos |
-| `V3__invitation_system.sql` | Sistema de invitaciones de usuario |
-| `V4__password_reset_tokens.sql` | Tokens de recuperación de contraseña |
+| Carpeta | Contenido | `prod` (y sin perfil) | `dev` |
+|---|---|---|---|
+| `db/migration/` | Esquema y catálogos, comunes a todos los entornos | Sí | Sí |
+| `db/migration-prod/` | Limpieza de los datos de prueba que cargaron V2, V7 y V8 | Sí | No |
+| `db/migration-dev/` | Datos de prueba (usuarios, docentes, aulas, grupos, matrículas, horarios) | No | Sí |
+
+Sin perfil se aplica lo mismo que en `prod`: producción nunca carga datos de prueba. El perfil `dev` agrega su carpeta en `application-dev.properties`.
+
+| Script | Carpeta | Descripción |
+|---|---|---|
+| `V1__init.sql` | común | Esquema inicial (usuarios, roles, facultades, escuelas, materias, docentes, grupos, clases, horarios, auditoría) |
+| `V2__cusol_data_dml.sql` | común | Roles, administrador inicial y usuarios de prueba (retirados en prod por V11) |
+| `V3__invitation_system.sql` | común | Invitaciones de usuario |
+| `V4__password_reset_tokens.sql` | común | Tokens de recuperación de contraseña |
+| `V5__role_names_to_english.sql` | común | Nombres de roles en inglés |
+| `V6__revoked_and_refresh_tokens.sql` | común | Tokens revocados y de renovación |
+| `V7__teacher_test_data.sql` | común | Docentes de prueba (retirados en prod por V11) |
+| `V8__classrooms_and_uuid_schema.sql` | común | Aulas, horas de clase, llaves UUID y datos académicos de prueba (retirados en prod por V11) |
+| `V9__unique_indexes_groups_classrooms.sql` | común | Índices únicos parciales de aulas y grupos activos |
+| `V11__limpiar_datos_de_prueba.sql` | prod | Retira los datos de prueba de V2, V7 y V8; conserva el administrador, los roles y los días |
+| `V12__datos_de_prueba_ampliados.sql` | dev | Más docentes, aulas, asignaturas, periodos, grupos, matrículas y horarios |
+
+Reglas, verificadas por `MigrationGuardTest` en el CI:
+
+- V1–V9 ya están aplicadas: no se modifican. Los cambios van en migraciones nuevas.
+- Desde V11, las carpetas común y de prod solo insertan en catálogos (`roles`, `day_of_week`). Los datos de prueba van en `db/migration-dev/`.
+- Cada versión es única entre las tres carpetas.
+- `application.properties` y `application-prod.properties` no pueden referenciar `db/migration-dev`.
 
 ## Pruebas
 
