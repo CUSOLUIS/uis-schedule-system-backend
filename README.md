@@ -93,8 +93,11 @@ Las principales entidades del dominio son:
    | `SECURITY_USER_PASSWORD` | Contraseña del usuario básico |
    | `JWT_PRIVATE_KEY` | Clave privada para firmar los JWT |
    | `JWT_USER_GENERATOR` | Identificador del emisor del token |
+   | `JWT_ACCESS_TOKEN_EXPIRATION_MS` | Vigencia del token de acceso en ms (por defecto `900000`, 15 min) |
+   | `JWT_REFRESH_TOKEN_EXPIRATION_MS` | Vigencia del token de renovación en ms (por defecto `604800000`, 7 días) |
    | `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (separados por coma) |
    | `SERVER_PORT` | Puerto del servidor (por defecto `8080`) |
+   | `BACKEND_PORT` | Puerto publicado por `docker-compose.yml` para el contenedor del backend |
    | `MAIL_USERNAME` / `MAIL_PASSWORD` | Credenciales SMTP para envío de correos |
    | `INVITATION_BASE_URL` | URL base del frontend para el enlace de invitación |
    | `PASSWORD_RESET_BASE_URL` | URL base del frontend para restablecer contraseña |
