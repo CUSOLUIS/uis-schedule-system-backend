@@ -8,7 +8,10 @@ import com.uis.schedule.backend.persistence.repository.GroupRepository;
 import com.uis.schedule.backend.persistence.repository.SubjectRepository;
 import com.uis.schedule.backend.persistence.repository.TeacherRepository;
 import com.uis.schedule.backend.presentation.dto.*;
+import com.uis.schedule.backend.service.exception.CapacityConstraintException;
+import com.uis.schedule.backend.service.exception.GroupAlreadyExistsException;
 import com.uis.schedule.backend.service.exception.GroupNotFoundException;
+import com.uis.schedule.backend.service.exception.ScheduleConflictException;
 import com.uis.schedule.backend.service.interfaces.GroupService;
 import com.uis.schedule.backend.util.mapper.GroupMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -91,7 +94,7 @@ public class GroupServiceImpl implements GroupService {
     @Transactional(readOnly = true)
     public PaginatedResponse<GroupListDTO> findByClassroom(UUID classroomId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<GroupEntity> groupsPage = groupRepository.findByClassroomId_ClassroomIdAndIsActiveTrue(classroomId, pageable);
+        Page<GroupEntity> groupsPage = groupRepository.findByActiveClassHourClassroom(classroomId, pageable);
         return convertToPaginatedResponse(groupsPage);
     }
 
@@ -138,16 +141,11 @@ public class GroupServiceImpl implements GroupService {
 
         log.info("Creating new group with name: {}", request.getName());
 
-        ClassroomEntity classroom = classroomRepository.findById(request.getClassroomId())
-                .orElseThrow(() -> new IllegalArgumentException("Classroom not found with ID: " + request.getClassroomId()));
+        ClassroomEntity classroom = resolveClassroom(request.getClassroomId());
+        Integer classroomMaxCapacity = classroom != null ? classroom.getMaxCapacity() : null;
+        validateCapacity(request.getCapacity(), classroomMaxCapacity);
 
-        if (!classroom.isActive()) {
-            throw new IllegalArgumentException("Cannot assign a disabled classroom to a group.");
-        }
-
-        validateCapacity(request.getCapacity(), classroom.getMaxCapacity());
-
-        checkClassroomAvailability(classroom.getClassroomId(), null);
+        ensureUniqueGroup(request.getName(), request.getSubjectId(), request.getPeriodId(), null);
 
         try {
             GroupEntity entity = GroupEntity.builder()
@@ -165,12 +163,8 @@ public class GroupServiceImpl implements GroupService {
 
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while creating group: {}", request.getName(), e);
-            throw new IllegalArgumentException("Group creation failed: A group with the same attributes may already exist.");
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("Unexpected error while creating group: {}", request.getName(), e);
-            throw new RuntimeException("Failed to create group", e);
+            throw new GroupAlreadyExistsException(
+                    "A group with the same name, subject and academic period already exists.");
         }
     }
 
@@ -191,7 +185,6 @@ public class GroupServiceImpl implements GroupService {
                     return new GroupNotFoundException(id);
                 });
 
-        // If classroom is being changed, validate capacity against the new classroom
         if (request.getClassroomId() != null) {
             ClassroomEntity classroom = classroomRepository.findById(request.getClassroomId())
                     .orElseThrow(() -> new IllegalArgumentException("Classroom not found with ID: " + request.getClassroomId()));
@@ -201,23 +194,35 @@ public class GroupServiceImpl implements GroupService {
             }
 
             groupToUpdate.setClassroomId(classroom);
+            checkClassroomAvailabilityForGroupHours(classroom.getClassroomId(), id);
 
-            // Check classroom availability (schedule conflict)
-            checkClassroomAvailability(classroom.getClassroomId(), id);
-
-            // Validate capacity against the (possibly new) classroom
             int capacityToValidate = request.getCapacity() != null ? request.getCapacity() : groupToUpdate.getCapacity();
             validateCapacity(capacityToValidate, classroom.getMaxCapacity());
         }
 
-        // If capacity is being changed (and classroom is NOT being changed), validate against existing classroom
-        if (request.getCapacity() != null && request.getClassroomId() == null && groupToUpdate.getClassroomId() != null) {
-            validateCapacity(request.getCapacity(), groupToUpdate.getClassroomId().getMaxCapacity());
+        if (request.getCapacity() != null && request.getClassroomId() == null) {
+            Integer maxCapacity = groupToUpdate.getClassroomId() != null
+                    ? groupToUpdate.getClassroomId().getMaxCapacity()
+                    : null;
+            validateCapacity(request.getCapacity(), maxCapacity);
         }
+
+        boolean wasActive = groupToUpdate.isActive();
 
         GroupMapper.updateEntityFromRequest(groupToUpdate, request);
 
+        if (wasActive && !groupToUpdate.isActive()) {
+            deactivateActiveClassHours(id);
+        }
+
         resolveOptionalRelations(groupToUpdate, request.getTeacherId(), request.getPeriodId(), request.getSubjectId());
+
+        String nameToCheck = groupToUpdate.getName();
+        UUID subjectId = groupToUpdate.getSubjectId() != null ? groupToUpdate.getSubjectId().getSubjectId() : null;
+        UUID periodId = groupToUpdate.getPeriodId() != null ? groupToUpdate.getPeriodId().getPeriodId() : null;
+        if (nameToCheck != null && subjectId != null && periodId != null) {
+            ensureUniqueGroup(nameToCheck, subjectId, periodId, id);
+        }
 
         try {
             GroupEntity updatedGroup = groupRepository.save(groupToUpdate);
@@ -226,10 +231,8 @@ public class GroupServiceImpl implements GroupService {
 
         } catch (DataIntegrityViolationException e) {
             log.error("Data integrity violation while updating group: {}", id, e);
-            throw new IllegalArgumentException("Group update failed: A group with the same attributes may already exist.");
-        } catch (Exception e) {
-            log.error("Unexpected error while updating group: {}", id, e);
-            throw new RuntimeException("Failed to update group", e);
+            throw new GroupAlreadyExistsException(
+                    "A group with the same name, subject and academic period already exists.");
         }
     }
 
@@ -251,23 +254,60 @@ public class GroupServiceImpl implements GroupService {
             throw new IllegalArgumentException("Group is already disabled (soft-deleted)");
         }
 
+        deactivateActiveClassHours(id);
+
         group.setActive(false);
         groupRepository.save(group);
 
-        log.info("Group soft-deleted successfully with ID: {}", id);
+        log.info("Group soft-deleted successfully with ID: {}.", id);
+    }
+
+    private void deactivateActiveClassHours(UUID groupId) {
+        List<ClassHourEntity> classHours = classHourRepository.findAllByGroupId_GroupIdAndIsActiveTrue(groupId);
+        for (ClassHourEntity classHour : classHours) {
+            classHour.setActive(false);
+        }
+        classHourRepository.saveAll(classHours);
     }
 
     /**
-     * Validates that the group capacity does not exceed the classroom max capacity
-     * and is a positive value.
+     * Validates that the group capacity is positive and, when a classroom is assigned,
+     * that it does not exceed the classroom max capacity.
      */
-    private void validateCapacity(int capacity, int classroomMaxCapacity) {
+    private void validateCapacity(int capacity, Integer classroomMaxCapacity) {
         if (capacity <= 0) {
-            throw new IllegalArgumentException("Group capacity must be greater than zero.");
+            throw new CapacityConstraintException("Group capacity must be greater than zero.");
         }
-        if (capacity > classroomMaxCapacity) {
-            throw new IllegalArgumentException(
+        if (classroomMaxCapacity != null && capacity > classroomMaxCapacity) {
+            throw new CapacityConstraintException(
                     "Group capacity (" + capacity + ") cannot exceed classroom max capacity (" + classroomMaxCapacity + ").");
+        }
+    }
+
+    private ClassroomEntity resolveClassroom(UUID classroomId) {
+        if (classroomId == null) {
+            return null;
+        }
+
+        ClassroomEntity classroom = classroomRepository.findById(classroomId)
+                .orElseThrow(() -> new IllegalArgumentException("Classroom not found with ID: " + classroomId));
+
+        if (!classroom.isActive()) {
+            throw new IllegalArgumentException("Cannot assign a disabled classroom to a group.");
+        }
+        return classroom;
+    }
+
+    private void ensureUniqueGroup(String name, UUID subjectId, UUID periodId, UUID excludeGroupId) {
+        if (name == null || subjectId == null || periodId == null) {
+            return;
+        }
+        boolean duplicate = excludeGroupId == null
+                ? groupRepository.existsActiveDuplicateForCreate(name, subjectId, periodId)
+                : groupRepository.existsActiveDuplicateExcluding(name, subjectId, periodId, excludeGroupId);
+        if (duplicate) {
+            throw new GroupAlreadyExistsException(
+                    "A group with the same name, subject and academic period already exists.");
         }
     }
 
@@ -294,24 +334,43 @@ public class GroupServiceImpl implements GroupService {
     }
 
     /**
-     * Checks whether a classroom already has active class hours scheduled
-     * for a different group. Used to warn or prevent double-booking when
-     * assigning a classroom to a group.
-     * Note: Fine-grained time/day overlap validation is handled at the
-     * ClassHour level via ClassHourRepository.findOverlappingHours().
+     * When a group already has scheduled hours, checks that those slots are free
+     * in the target classroom (same days, times and academic dates).
+     * Creating a group without hours does not reserve the classroom globally.
      */
-    private void checkClassroomAvailability(UUID classroomId, UUID excludeGroupId) {
-        List<ClassHourEntity> existingHours = classHourRepository
-                .findAllByIsActiveTrueAndClassroomId_ClassroomId(classroomId);
+    private void checkClassroomAvailabilityForGroupHours(UUID classroomId, UUID groupId) {
+        List<ClassHourEntity> groupHours = classHourRepository.findAllByGroupId_GroupIdAndIsActiveTrue(groupId);
+        if (groupHours.isEmpty()) {
+            return;
+        }
 
-        boolean hasConflict = existingHours.stream()
-                .anyMatch(ch -> ch.getGroupId() != null
-                        && !ch.getGroupId().getGroupId().equals(excludeGroupId));
+        for (ClassHourEntity hour : groupHours) {
+            if (hour.getDays() == null || hour.getDays().isEmpty()) {
+                continue;
+            }
 
-        if (hasConflict) {
-            throw new IllegalArgumentException(
-                    "Classroom is already assigned to another group with active class hours. "
-                    + "Verify there are no schedule conflicts before proceeding.");
+            List<UUID> dayIds = hour.getDays().stream()
+                    .map(DayWeekEntity::getDayId)
+                    .collect(Collectors.toList());
+
+            List<ClassHourEntity> overlapping = classHourRepository.findOverlappingHours(
+                    dayIds,
+                    classroomId,
+                    hour.getStartTime(),
+                    hour.getEndTime(),
+                    hour.getStartDate(),
+                    hour.getEndDate(),
+                    hour.getClassHourId()
+            );
+
+            boolean conflict = overlapping.stream()
+                    .anyMatch(ch -> ch.getGroupId() == null
+                            || !ch.getGroupId().getGroupId().equals(groupId));
+
+            if (conflict) {
+                throw new ScheduleConflictException(
+                        "The classroom is already occupied on one or more days and time slots of this group.");
+            }
         }
     }
 }
