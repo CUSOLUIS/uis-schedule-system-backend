@@ -5,6 +5,7 @@ on:
     branches: [develop, main]
   push:
     branches: [develop, main]
+  workflow_call:
 
 jobs:
   test:
@@ -21,6 +22,6 @@ jobs:
           cache: maven
           cache-dependency-path: backend/pom.xml
 
-      - name: Ejecutar tests
+      - name: Ejecutar tests y compilar el artefacto
         working-directory: ./backend
-        run: mvn test -Dmaven.compiler.release=17
+        run: mvn verify -Dmaven.compiler.release=17
