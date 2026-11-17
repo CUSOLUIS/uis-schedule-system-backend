@@ -1,0 +1,79 @@
+name: PR commit summary
+
+# Mantiene la sección "Cambios realizados" de la descripción del PR (entre
+# los marcadores <!-- commits:start --> / <!-- commits:end --> del template
+# en .github/pull_request_template.md) sincronizada con los commits reales
+# de la rama, cada vez que se abre el PR o se le hace push.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  update-description:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Actualizar "Cambios realizados" con los commits del PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: commits } = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+
+            const commitsBlock = commits.length
+              ? commits
+                  .map((c) => {
+                    const [subject, ...rest] = c.commit.message.split("\n\n");
+                    const bodyText = rest.join("\n\n").trim();
+                    const indentedBody = bodyText
+                      ? "\n\n  " + bodyText.replace(/\n/g, "\n  ")
+                      : "";
+                    return `- **${subject}**${indentedBody}`;
+                  })
+                  .join("\n\n")
+              : "_No hay commits nuevos._";
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const body = pr.body || "";
+            const startMarker = "<!-- commits:start -->";
+            const endMarker = "<!-- commits:end -->";
+            const start = body.indexOf(startMarker);
+            const end = body.indexOf(endMarker);
+
+            if (start === -1 || end === -1) {
+              core.info(
+                "No se encontraron los marcadores commits:start/commits:end en la descripción del PR; no se modifica nada (¿se borraron del template?)."
+              );
+              return;
+            }
+
+            const newBody =
+              body.slice(0, start + startMarker.length) +
+              "\n\n" +
+              commitsBlock +
+              "\n\n" +
+              body.slice(end);
+
+            if (newBody === body) {
+              core.info("Sin cambios en la sección de commits.");
+              return;
+            }
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              body: newBody,
+            });
