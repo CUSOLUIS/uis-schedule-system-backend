@@ -125,6 +125,7 @@ public class GlobalExceptionHandler {
 
     // ─── 401 — Authentication failures ────────────
 
+    /** Refresh or logout with an invalid, revoked, or disabled-account token. */
     @ExceptionHandler(InvalidSessionTokenException.class)
     public ResponseEntity<ApiResponse<Object>> handleInvalidSessionTokenException(InvalidSessionTokenException ex) {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage());

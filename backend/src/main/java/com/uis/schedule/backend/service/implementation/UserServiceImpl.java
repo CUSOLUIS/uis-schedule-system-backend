@@ -67,7 +67,6 @@ public class UserServiceImpl implements UserService {
   private final UserService self;
   private final RevokedTokenRepository revokedTokenRepository;
   private final RefreshTokenRepository refreshTokenRepository;
-  private final TeacherProfileService teacherProfileService;
 
   private static final String ADMINISTRATOR_ROLE = "ADMINISTRATOR";
 
@@ -86,8 +85,7 @@ public class UserServiceImpl implements UserService {
       EmailService emailService,
       @Lazy UserService self,
       RevokedTokenRepository revokedTokenRepository,
-      RefreshTokenRepository refreshTokenRepository,
-      TeacherProfileService teacherProfileService) {
+      RefreshTokenRepository refreshTokenRepository) {
     this.userRepository = userRepository;
     this.roleRepository = roleRepository;
     this.authenticationManager = authenticationManager;
@@ -99,7 +97,6 @@ public class UserServiceImpl implements UserService {
     this.self = self;
     this.revokedTokenRepository = revokedTokenRepository;
     this.refreshTokenRepository = refreshTokenRepository;
-    this.teacherProfileService = teacherProfileService;
   }
 
   @Override
@@ -172,12 +169,13 @@ public class UserServiceImpl implements UserService {
 
     log.info("Creating new user with email: {}", request.getEmail());
 
+    // Fuera del try: un rol inexistente debe llegar como 400, no envuelto en 500.
+    java.util.Set<RoleEntity> roles = resolveRoles(request.getRoles());
+
     try {
       String email = request.getEmail().toLowerCase();
       String username = (request.getFirstName().substring(0, 1) + request.getLastName() + randomInt)
           .toLowerCase();
-
-      java.util.Set<RoleEntity> roles = resolveRoles(request.getRoles());
 
       UserEntity entity = UserEntity.builder()
           .firstName(request.getFirstName())
@@ -192,16 +190,14 @@ public class UserServiceImpl implements UserService {
           .credentialNoExpired(true)
           .build();
       UserEntity savedEntity = userRepository.save(entity);
-      teacherProfileService.ensureFor(savedEntity);
 
       log.info("User created successfully with ID: {}", savedEntity.getUserId());
       return UserMapper.entityToResponse(savedEntity);
 
     } catch (DataIntegrityViolationException e) {
       log.error("Data integrity violation while creating user: {}", request.getEmail(), e);
-      throw e;
-    } catch (RuntimeException e) {
-      throw e;
+      throw new IllegalArgumentException(
+          "User creation failed: The email '" + request.getEmail() + "' may already be in use.");
     } catch (Exception e) {
       log.error("Unexpected error while creating user: {}", request.getEmail(), e);
       throw new RuntimeException("Failed to create user", e);
@@ -229,6 +225,7 @@ public class UserServiceImpl implements UserService {
       request.setEmail(request.getEmail().toLowerCase());
     }
 
+    // Se valida antes de tocar la entidad para no dejar cambios parciales.
     java.util.Set<RoleEntity> resolvedRoles = request.getRoles() != null
         ? resolveRoles(request.getRoles())
         : null;
@@ -244,18 +241,17 @@ public class UserServiceImpl implements UserService {
 
       UserEntity updatedUser = userRepository.save(userToUpdate);
       if (wasEnabled && !updatedUser.isEnable()) {
+        // Una cuenta deshabilitada no debe poder renovar su sesión.
         refreshTokenRepository.revokeAllByUserId(updatedUser.getUserId());
       }
-      teacherProfileService.ensureFor(updatedUser);
 
       log.info("User updated successfully with ID: {}", id);
       return UserMapper.entityToResponse(updatedUser);
 
     } catch (DataIntegrityViolationException e) {
       log.error("Data integrity violation while updating user: {}", id, e);
-      throw e;
-    } catch (RuntimeException e) {
-      throw e;
+      throw new IllegalArgumentException(
+          "Email '" + request.getEmail() + "' is already in use by another user.");
     } catch (Exception e) {
       log.error("Unexpected error while updating user: {}", id, e);
       throw new RuntimeException("Failed to update user", e);
@@ -483,6 +479,7 @@ public class UserServiceImpl implements UserService {
 
     userRepository.save(user);
     passwordResetTokenRepository.save(resetToken);
+    // Si la contraseña anterior estaba comprometida, sus sesiones no deben seguir renovándose.
     refreshTokenRepository.revokeAllByUserId(user.getUserId());
   }
 
@@ -618,8 +615,8 @@ public class UserServiceImpl implements UserService {
   }
 
   /**
-   * Resolves role names to persisted roles. Unknown names are rejected with 400.
-   * An empty or missing set falls back to the USER role.
+   * Traduce nombres de rol a roles persistidos. Un nombre inexistente se rechaza
+   * (400) en lugar de ignorarse; sin roles se asigna USER.
    */
   private java.util.Set<RoleEntity> resolveRoles(java.util.Set<String> roleNames) {
     java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
@@ -641,6 +638,10 @@ public class UserServiceImpl implements UserService {
     return roles;
   }
 
+  /**
+   * Un ADMINISTRATOR no puede deshabilitarse ni perder su rol: como tampoco se
+   * puede borrar, el sistema conserva siempre al menos un administrador activo.
+   */
   private void assertAdministratorCanBeUpdated(UserEntity user, UpdateUserRequest request,
       java.util.Set<RoleEntity> resolvedRoles) {
     if (!hasRole(user, ADMINISTRATOR_ROLE)) {
@@ -653,27 +654,13 @@ public class UserServiceImpl implements UserService {
           "Security protection: Users with ADMINISTRATOR role cannot be disabled.");
     }
 
-    if (resolvedRoles == null) {
-      return;
-    }
-
-    boolean keepsAdministrator = resolvedRoles.stream()
-        .anyMatch(role -> ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName()));
-    if (keepsAdministrator) {
-      return;
-    }
-
-    long otherAdministrators = userRepository.countByRoles_NameAndIsEnableTrueAndUserIdNot(
-        ADMINISTRATOR_ROLE, user.getUserId());
-    if (otherAdministrators == 0) {
-      log.warn("Attempt to remove the last ADMINISTRATOR blocked for ID: {}", user.getUserId());
+    boolean stripsAdministrator = resolvedRoles != null && resolvedRoles.stream()
+        .noneMatch(role -> ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName()));
+    if (stripsAdministrator) {
+      log.warn("Attempt to strip ADMINISTRATOR role blocked for ID: {}", user.getUserId());
       throw new ProtectedRoleException(
-          "Security protection: The system must keep at least one active administrator.");
+          "Security protection: Users with ADMINISTRATOR role cannot be stripped of that role.");
     }
-
-    log.warn("Attempt to strip ADMINISTRATOR role blocked for ID: {}", user.getUserId());
-    throw new ProtectedRoleException(
-        "Security protection: Users with ADMINISTRATOR role cannot be stripped of that role.");
   }
 
   private boolean hasRole(UserEntity user, String roleName) {
