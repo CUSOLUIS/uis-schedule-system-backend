@@ -2,11 +2,13 @@ package com.uis.schedule.backend.service.interfaces;
 
 import java.util.UUID;
 
+import com.uis.schedule.backend.presentation.dto.CreateTeacherRequest;
 import com.uis.schedule.backend.presentation.dto.PaginatedResponse;
 import com.uis.schedule.backend.presentation.dto.TeacherDTO;
+import com.uis.schedule.backend.presentation.dto.UpdateTeacherRequest;
 
 /**
- * Read access to teacher profiles linked to user accounts.
+ * Academic teacher catalog (no user accounts / portal).
  */
 public interface TeacherService {
 
@@ -14,12 +16,7 @@ public interface TeacherService {
 
     TeacherDTO findTeacherById(UUID teacherId);
 
-    /**
-     * Returns the teacher profile of the authenticated account.
-     * Creates the profile when the account already has the TEACHER role but no row yet.
-     *
-     * @param usernameOrEmail principal name (email) from the security context
-     * @return teacher profile including teacherId
-     */
-    TeacherDTO getCurrentTeacher(String usernameOrEmail);
+    TeacherDTO createTeacher(CreateTeacherRequest request);
+
+    TeacherDTO updateTeacher(UUID teacherId, UpdateTeacherRequest request);
 }

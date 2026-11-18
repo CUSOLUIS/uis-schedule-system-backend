@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,8 +39,6 @@ class InvitationServiceImplTest {
     private EmailService emailService;
     @Mock
     private PasswordEncoder passwordEncoder;
-    @Mock
-    private TeacherProfileService teacherProfileService;
 
     private InvitationServiceImpl invitationService;
 
@@ -51,12 +50,11 @@ class InvitationServiceImplTest {
                 roleRepository,
                 tokenGenerator,
                 emailService,
-                passwordEncoder,
-                teacherProfileService);
+                passwordEncoder);
     }
 
     @Test
-    void approveInvitation_withTeacherRole_ensuresTeacherProfile() {
+    void approveInvitation_createsUserWithoutTeacherPortalHook() {
         UUID invitationId = UUID.randomUUID();
         UserInvitationEntity invitation = UserInvitationEntity.builder()
                 .invitationId(invitationId)
@@ -72,20 +70,22 @@ class InvitationServiceImplTest {
                 .createdBy(UserEntity.builder().firstName("Admin").lastName("Root").build())
                 .build();
 
-        RoleEntity teacher = RoleEntity.builder().name("TEACHER").isActive(true).build();
+        RoleEntity operator = RoleEntity.builder().name("OPERATOR").isActive(true).build();
         when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(invitation));
-        when(roleRepository.findByName("TEACHER")).thenReturn(Optional.of(teacher));
+        when(roleRepository.findByName("OPERATOR")).thenReturn(Optional.of(operator));
         when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> {
             UserEntity saved = invocation.getArgument(0);
             saved.setUserId(UUID.randomUUID());
             return saved;
         });
+        when(invitationRepository.save(any(UserInvitationEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ApproveInvitationRequest request = new ApproveInvitationRequest();
-        request.setRoleName("TEACHER");
+        request.setRoleName("OPERATOR");
 
-        invitationService.approveInvitation(invitationId, request);
+        var response = invitationService.approveInvitation(invitationId, request);
 
-        verify(teacherProfileService).ensureFor(any(UserEntity.class));
+        assertEquals("APPROVED", response.getStatus());
+        verify(userRepository).save(any(UserEntity.class));
     }
 }

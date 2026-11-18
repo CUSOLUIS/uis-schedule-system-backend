@@ -39,13 +39,13 @@ public class AuthenticationController {
     this.userService = userService;
   }
 
-  @Operation(summary = "Register a new user", description = "Creates a new user in the system and returns a JWT token upon successful registration.")
+  @Operation(summary = "Register a new user (disabled)",
+      description = "Public signup is closed. Accounts are created via invitation or by an administrator.")
   @ApiResponses(value = {
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "User registered successfully"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Invalid input or user with the same email already exists"),
-      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error during registration")
+      @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Public signup is disabled")
   })
   @PostMapping("/signup")
+  @PreAuthorize("denyAll()")
   public ResponseEntity<ApiResponse<AuthResponse>> signUp(
       @Valid @RequestBody(required = true) AuthSignupRequest authSignupRequest) {
     AuthResponse authResponse = userService.signUp(authSignupRequest);

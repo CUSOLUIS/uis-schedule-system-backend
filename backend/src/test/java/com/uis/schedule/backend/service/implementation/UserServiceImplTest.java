@@ -144,19 +144,34 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateUser_administratorWithEmptyRoles_forbidden() {
+    void updateUser_administratorWithEmptyRoles_rejectsMissingRoles() {
         UUID userId = UUID.randomUUID();
         UserEntity admin = enabledUser(userId, role("ADMINISTRATOR"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(admin));
-        when(roleRepository.findByName("USER")).thenReturn(Optional.of(role("USER")));
 
         UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of()).build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> userService.updateUser(userId, request));
+
+        assertTrue(ex.getMessage().contains("At least one role is required"));
+        assertEquals(Set.of("ADMINISTRATOR"), roleNames(admin));
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void updateUser_administratorEmailChange_forbidden() {
+        UUID userId = UUID.randomUUID();
+        UserEntity admin = enabledUser(userId, role("ADMINISTRATOR"));
+        admin.setEmail("admin@uis.edu.co");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(admin));
+
+        UpdateUserRequest request = UpdateUserRequest.builder().email("otro@uis.edu.co").build();
 
         ProtectedRoleException ex = assertThrows(ProtectedRoleException.class,
                 () -> userService.updateUser(userId, request));
 
-        assertEquals(STRIP_ADMIN_MESSAGE, ex.getMessage());
-        assertEquals(Set.of("ADMINISTRATOR"), roleNames(admin));
+        assertTrue(ex.getMessage().contains("Administrator email cannot be changed"));
         verify(userRepository, never()).save(any());
     }
 

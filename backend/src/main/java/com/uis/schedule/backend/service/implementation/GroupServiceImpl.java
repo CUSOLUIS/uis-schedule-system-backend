@@ -193,12 +193,11 @@ public class GroupServiceImpl implements GroupService {
                 throw new IllegalArgumentException("Cannot assign a disabled classroom to a group.");
             }
 
+            // classroomId on the group is only an optional preference (B07 / HC-03).
+            // Do not force-relocate existing class hours that already have their own classroom.
             int capacityToValidate = request.getCapacity() != null ? request.getCapacity() : groupToUpdate.getCapacity();
             validateCapacity(capacityToValidate, classroom.getMaxCapacity());
-
             groupToUpdate.setClassroomId(classroom);
-            checkClassroomAvailabilityForGroupHours(classroom.getClassroomId(), id);
-            alignClassHoursWithClassroom(id, classroom);
         }
 
         if (request.getCapacity() != null && request.getClassroomId() == null) {
@@ -285,16 +284,16 @@ public class GroupServiceImpl implements GroupService {
     }
 
     /**
-     * Validates that the group capacity is positive and, when a classroom is assigned,
-     * that it does not exceed the classroom max capacity.
+     * Capacity must be positive. Exceeding classroom max is allowed (filler seats)
+     * and only logged as a warning.
      */
     private void validateCapacity(int capacity, Integer classroomMaxCapacity) {
         if (capacity <= 0) {
             throw new CapacityConstraintException("Group capacity must be greater than zero.");
         }
         if (classroomMaxCapacity != null && capacity > classroomMaxCapacity) {
-            throw new CapacityConstraintException(
-                    "Group capacity (" + capacity + ") cannot exceed classroom max capacity (" + classroomMaxCapacity + ").");
+            log.warn("Group capacity ({}) exceeds classroom max capacity ({}). Allowed for filler seats.",
+                    capacity, classroomMaxCapacity);
         }
     }
 
@@ -396,60 +395,4 @@ public class GroupServiceImpl implements GroupService {
         }
     }
 
-    /**
-     * After the target classroom is confirmed free, active class hours adopt that
-     * classroom so group.classroomId and classHour.classroomId stay aligned.
-     */
-    private void alignClassHoursWithClassroom(UUID groupId, ClassroomEntity classroom) {
-        List<ClassHourEntity> groupHours = classHourRepository.findAllByGroupId_GroupIdAndIsActiveTrue(groupId);
-        if (groupHours.isEmpty()) {
-            return;
-        }
-        for (ClassHourEntity hour : groupHours) {
-            hour.setClassroomId(classroom);
-        }
-        classHourRepository.saveAll(groupHours);
-    }
-
-    /**
-     * When a group already has scheduled hours, checks that those slots are free
-     * in the target classroom (same days, times and academic dates).
-     * The check uses the classroom the hours will occupy after the update.
-     * Creating a group without hours does not reserve the classroom globally.
-     */
-    private void checkClassroomAvailabilityForGroupHours(UUID classroomId, UUID groupId) {
-        List<ClassHourEntity> groupHours = classHourRepository.findAllByGroupId_GroupIdAndIsActiveTrue(groupId);
-        if (groupHours.isEmpty()) {
-            return;
-        }
-
-        for (ClassHourEntity hour : groupHours) {
-            if (hour.getDays() == null || hour.getDays().isEmpty()) {
-                continue;
-            }
-
-            List<UUID> dayIds = hour.getDays().stream()
-                    .map(DayWeekEntity::getDayId)
-                    .collect(Collectors.toList());
-
-            List<ClassHourEntity> overlapping = classHourRepository.findOverlappingHours(
-                    dayIds,
-                    classroomId,
-                    hour.getStartTime(),
-                    hour.getEndTime(),
-                    hour.getStartDate(),
-                    hour.getEndDate(),
-                    hour.getClassHourId()
-            );
-
-            boolean conflict = overlapping.stream()
-                    .anyMatch(ch -> ch.getGroupId() == null
-                            || !ch.getGroupId().getGroupId().equals(groupId));
-
-            if (conflict) {
-                throw new ScheduleConflictException(
-                        "The classroom is already occupied on one or more days and time slots of this group.");
-            }
-        }
-    }
 }

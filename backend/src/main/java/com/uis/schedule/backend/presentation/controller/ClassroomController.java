@@ -214,6 +214,24 @@ public class ClassroomController {
         return ResponseEntity.ok(ApiResponse.success(classrooms, "Classrooms retrieved successfully"));
     }
 
+    @Operation(summary = "List free classrooms for a time slot",
+            description = "Returns active classrooms available for the given day/time/date range, "
+                    + "ordered by building preference and smallest sufficient capacity (HC-05).")
+    @GetMapping("/available")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<java.util.List<ClassroomListDTO>>> available(
+            @RequestParam UUID dayId,
+            @RequestParam java.time.LocalTime startTime,
+            @RequestParam java.time.LocalTime endTime,
+            @RequestParam java.time.LocalDate startDate,
+            @RequestParam java.time.LocalDate endDate,
+            @RequestParam(required = false, defaultValue = "1") Integer minCapacity,
+            @RequestParam(required = false) UUID excludeClassHourId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                classroomService.findAvailable(dayId, startTime, endTime, startDate, endDate, minCapacity, excludeClassHourId),
+                "Available classrooms retrieved successfully"));
+    }
+
     @Operation(summary = "Get classroom by ID", description = "Retrieves detailed information of a single classroom. Requires authentication.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

@@ -36,6 +36,17 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
 
     Page<ClassHourEntity> findByGroupId_TeacherId_TeacherIdAndIsActiveTrueAndGroupId_IsActiveTrue(UUID teacherId, Pageable pageable);
 
+    @Query("SELECT ch FROM ClassHourEntity ch " +
+           "WHERE ch.isActive = true " +
+           "AND (ch.groupId IS NULL OR ch.groupId.isActive = true) " +
+           "AND (" +
+           "  (ch.teacherId IS NOT NULL AND ch.teacherId.teacherId = :teacherId) " +
+           "  OR (ch.teacherId IS NULL AND ch.groupId.teacherId.teacherId = :teacherId)" +
+           ") ")
+    Page<ClassHourEntity> findActiveBySessionOrGroupTeacher(
+            @Param("teacherId") UUID teacherId,
+            Pageable pageable);
+
     /**
      * Find active class hours that overlap with the given time range and date range
      * on any of the specified days, in a specific classroom,
@@ -95,11 +106,13 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
      */
     @Query("SELECT ch FROM ClassHourEntity ch " +
            "JOIN ch.days d " +
-           "JOIN ch.groupId g " +
            "WHERE d.dayId IN :dayIds " +
-           "AND g.teacherId.teacherId = :teacherId " +
            "AND ch.isActive = true " +
-           "AND g.isActive = true " +
+           "AND (ch.groupId IS NULL OR ch.groupId.isActive = true) " +
+           "AND (" +
+           "  (ch.teacherId IS NOT NULL AND ch.teacherId.teacherId = :teacherId) " +
+           "  OR (ch.teacherId IS NULL AND ch.groupId.teacherId.teacherId = :teacherId)" +
+           ") " +
            "AND ch.classHourId <> :excludeId " +
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime " +
@@ -115,17 +128,15 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
             @Param("excludeId") UUID excludeId
     );
 
-    /**
-     * Overlapping active class hours for the same teacher (via the assigned group).
-     * Used for creating new class hours (no ID to exclude).
-     */
     @Query("SELECT ch FROM ClassHourEntity ch " +
            "JOIN ch.days d " +
-           "JOIN ch.groupId g " +
            "WHERE d.dayId IN :dayIds " +
-           "AND g.teacherId.teacherId = :teacherId " +
            "AND ch.isActive = true " +
-           "AND g.isActive = true " +
+           "AND (ch.groupId IS NULL OR ch.groupId.isActive = true) " +
+           "AND (" +
+           "  (ch.teacherId IS NOT NULL AND ch.teacherId.teacherId = :teacherId) " +
+           "  OR (ch.teacherId IS NULL AND ch.groupId.teacherId.teacherId = :teacherId)" +
+           ") " +
            "AND ch.startTime < :endTime " +
            "AND ch.endTime > :startTime " +
            "AND ch.startDate <= :endDate " +
@@ -133,6 +144,46 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
     List<ClassHourEntity> findOverlappingHoursByTeacherForCreate(
             @Param("dayIds") List<UUID> dayIds,
             @Param("teacherId") UUID teacherId,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("SELECT ch FROM ClassHourEntity ch " +
+           "JOIN ch.days d " +
+           "WHERE d.dayId IN :dayIds " +
+           "AND ch.groupId.groupId = :groupId " +
+           "AND ch.isActive = true " +
+           "AND ch.groupId.isActive = true " +
+           "AND ch.classHourId <> :excludeId " +
+           "AND ch.startTime < :endTime " +
+           "AND ch.endTime > :startTime " +
+           "AND ch.startDate <= :endDate " +
+           "AND ch.endDate >= :startDate")
+    List<ClassHourEntity> findOverlappingHoursByGroup(
+            @Param("dayIds") List<UUID> dayIds,
+            @Param("groupId") UUID groupId,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("excludeId") UUID excludeId
+    );
+
+    @Query("SELECT ch FROM ClassHourEntity ch " +
+           "JOIN ch.days d " +
+           "WHERE d.dayId IN :dayIds " +
+           "AND ch.groupId.groupId = :groupId " +
+           "AND ch.isActive = true " +
+           "AND ch.groupId.isActive = true " +
+           "AND ch.startTime < :endTime " +
+           "AND ch.endTime > :startTime " +
+           "AND ch.startDate <= :endDate " +
+           "AND ch.endDate >= :startDate")
+    List<ClassHourEntity> findOverlappingHoursByGroupForCreate(
+            @Param("dayIds") List<UUID> dayIds,
+            @Param("groupId") UUID groupId,
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime,
             @Param("startDate") LocalDate startDate,

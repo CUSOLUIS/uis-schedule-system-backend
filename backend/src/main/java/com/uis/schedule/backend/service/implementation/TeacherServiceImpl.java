@@ -1,13 +1,12 @@
 package com.uis.schedule.backend.service.implementation;
 
 import com.uis.schedule.backend.persistence.entity.TeacherEntity;
-import com.uis.schedule.backend.persistence.entity.UserEntity;
 import com.uis.schedule.backend.persistence.repository.TeacherRepository;
-import com.uis.schedule.backend.persistence.repository.UserRepository;
+import com.uis.schedule.backend.presentation.dto.CreateTeacherRequest;
 import com.uis.schedule.backend.presentation.dto.PaginatedResponse;
 import com.uis.schedule.backend.presentation.dto.TeacherDTO;
+import com.uis.schedule.backend.presentation.dto.UpdateTeacherRequest;
 import com.uis.schedule.backend.service.exception.TeacherNotFoundException;
-import com.uis.schedule.backend.service.exception.UserNotFoundException;
 import com.uis.schedule.backend.service.interfaces.TeacherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,16 +20,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TeacherServiceImpl implements TeacherService {
 
-    private final UserRepository userRepository;
     private final TeacherRepository teacherRepository;
-    private final TeacherProfileService teacherProfileService;
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<TeacherDTO> listTeachers(int page, int size) {
         Page<TeacherEntity> teachers = teacherRepository.findAll(PageRequest.of(page, size));
         return PaginatedResponse.<TeacherDTO>builder()
-                .content(teachers.getContent().stream().map(teacherProfileService::toDto).toList())
+                .content(teachers.getContent().stream().map(this::toDto).toList())
                 .pageNumber(teachers.getNumber())
                 .pageSize(teachers.getSize())
                 .totalElements(teachers.getTotalElements())
@@ -46,28 +43,57 @@ public class TeacherServiceImpl implements TeacherService {
             throw new IllegalArgumentException("Teacher ID cannot be null");
         }
         return teacherRepository.findById(teacherId)
-                .map(teacherProfileService::toDto)
+                .map(this::toDto)
                 .orElseThrow(() -> new TeacherNotFoundException("Teacher not found with id: " + teacherId));
     }
 
     @Override
-    @Transactional
-    public TeacherDTO getCurrentTeacher(String usernameOrEmail) {
-        if (usernameOrEmail == null || usernameOrEmail.isBlank()) {
-            throw new UserNotFoundException("Authenticated user not found");
+    public TeacherDTO createTeacher(CreateTeacherRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Create teacher request cannot be null");
         }
+        TeacherEntity saved = teacherRepository.save(TeacherEntity.builder()
+                .fullName(request.getFullName().trim())
+                .linkType(request.getLinkType().trim().toUpperCase())
+                .availability(request.getAvailability())
+                .department(request.getDepartment())
+                .build());
+        return toDto(saved);
+    }
 
-        UserEntity user = userRepository.findUserEntityByEmailOrUsername(usernameOrEmail, usernameOrEmail)
-                .orElseThrow(() -> new UserNotFoundException("Authenticated user not found"));
-
-        if (!teacherProfileService.hasTeacherRole(user)) {
-            throw new TeacherNotFoundException("The authenticated user is not linked to a teacher profile.");
+    @Override
+    public TeacherDTO updateTeacher(UUID teacherId, UpdateTeacherRequest request) {
+        if (teacherId == null) {
+            throw new IllegalArgumentException("Teacher ID cannot be null");
         }
-
-        TeacherEntity teacher = teacherProfileService.ensureFor(user);
-        if (teacher == null) {
-            throw new TeacherNotFoundException("The authenticated user is not linked to a teacher profile.");
+        if (request == null) {
+            throw new IllegalArgumentException("Update teacher request cannot be null");
         }
-        return teacherProfileService.toDto(teacher);
+        TeacherEntity teacher = teacherRepository.findById(teacherId)
+                .orElseThrow(() -> new TeacherNotFoundException("Teacher not found with id: " + teacherId));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            teacher.setFullName(request.getFullName().trim());
+        }
+        if (request.getLinkType() != null && !request.getLinkType().isBlank()) {
+            teacher.setLinkType(request.getLinkType().trim().toUpperCase());
+        }
+        if (request.getAvailability() != null) {
+            teacher.setAvailability(request.getAvailability());
+        }
+        if (request.getDepartment() != null) {
+            teacher.setDepartment(request.getDepartment());
+        }
+        return toDto(teacherRepository.save(teacher));
+    }
+
+    private TeacherDTO toDto(TeacherEntity teacher) {
+        return TeacherDTO.builder()
+                .teacherId(teacher.getTeacherId())
+                .fullName(teacher.getFullName())
+                .linkType(teacher.getLinkType())
+                .availability(teacher.getAvailability())
+                .department(teacher.getDepartment())
+                .build();
     }
 }

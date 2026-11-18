@@ -4,12 +4,13 @@ import com.uis.schedule.backend.persistence.entity.ClassHourEntity;
 import com.uis.schedule.backend.persistence.entity.ClassroomEntity;
 import com.uis.schedule.backend.persistence.entity.DayWeekEntity;
 import com.uis.schedule.backend.persistence.entity.GroupEntity;
+import com.uis.schedule.backend.persistence.entity.TeacherEntity;
 import com.uis.schedule.backend.persistence.repository.ClassHourRepository;
 import com.uis.schedule.backend.persistence.repository.ClassroomRepository;
 import com.uis.schedule.backend.persistence.repository.DayWeekRepository;
 import com.uis.schedule.backend.persistence.repository.GroupRepository;
+import com.uis.schedule.backend.persistence.repository.TeacherRepository;
 import com.uis.schedule.backend.presentation.dto.*;
-import com.uis.schedule.backend.service.exception.CapacityConstraintException;
 import com.uis.schedule.backend.service.exception.ClassHourNotFoundException;
 import com.uis.schedule.backend.service.exception.ScheduleConflictException;
 import com.uis.schedule.backend.service.interfaces.ClassHourService;
@@ -32,9 +33,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * Implementation of ClassHourService interface.
- */
 @Slf4j
 @Service
 @Transactional
@@ -44,16 +42,19 @@ public class ClassHourServiceImpl implements ClassHourService {
     private final GroupRepository groupRepository;
     private final ClassroomRepository classroomRepository;
     private final DayWeekRepository dayWeekRepository;
+    private final TeacherRepository teacherRepository;
 
     @Autowired
     public ClassHourServiceImpl(ClassHourRepository classHourRepository,
                                 GroupRepository groupRepository,
                                 ClassroomRepository classroomRepository,
-                                DayWeekRepository dayWeekRepository) {
+                                DayWeekRepository dayWeekRepository,
+                                TeacherRepository teacherRepository) {
         this.classHourRepository = classHourRepository;
         this.groupRepository = groupRepository;
         this.classroomRepository = classroomRepository;
         this.dayWeekRepository = dayWeekRepository;
+        this.teacherRepository = teacherRepository;
     }
 
     @Override
@@ -127,7 +128,7 @@ public class ClassHourServiceImpl implements ClassHourService {
     public PaginatedResponse<ClassHourListDTO> findByTeacherId(UUID teacherId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<ClassHourEntity> classHoursPage = classHourRepository
-                .findByGroupId_TeacherId_TeacherIdAndIsActiveTrueAndGroupId_IsActiveTrue(teacherId, pageable);
+                .findActiveBySessionOrGroupTeacher(teacherId, pageable);
         return convertToPaginatedResponse(classHoursPage);
     }
 
@@ -155,7 +156,6 @@ public class ClassHourServiceImpl implements ClassHourService {
         log.info("Creating new class hour for group: {} from {} to {} on days: {}",
                 request.getGroupId(), request.getStartTime(), request.getEndTime(), request.getDayIds());
 
-        // Validate group
         GroupEntity group = groupRepository.findById(request.getGroupId())
                 .orElseThrow(() -> new IllegalArgumentException("Group not found with ID: " + request.getGroupId()));
 
@@ -163,40 +163,33 @@ public class ClassHourServiceImpl implements ClassHourService {
             throw new IllegalArgumentException("Cannot create a class hour for a disabled group.");
         }
 
-        // Validate classroom
-        ClassroomEntity classroom = classroomRepository.findById(request.getClassroomId())
-                .orElseThrow(() -> new IllegalArgumentException("Classroom not found with ID: " + request.getClassroomId()));
-
-        if (!classroom.isActive()) {
-            throw new IllegalArgumentException("Cannot create a class hour for a disabled classroom.");
-        }
-
+        ClassroomEntity classroom = resolveClassroom(request.getClassroomId());
         validateGroupFitsClassroom(group, classroom);
 
-        // Validate days
         List<UUID> dayIds = request.getDayIds();
         if (dayIds == null || dayIds.isEmpty()) {
             throw new IllegalArgumentException("At least one day of the week is required.");
         }
 
         Set<DayWeekEntity> days = validateAndResolveDays(dayIds);
-
-        // Validate time range
         validateTimeRange(request.getStartTime(), request.getEndTime());
-
-        // Validate academic period dates (required by @NotNull in DTO)
         LocalDate startDate = request.getStartDate();
         LocalDate endDate = request.getEndDate();
         validateDateRange(startDate, endDate);
 
-        UUID teacherId = group.getTeacherId() != null ? group.getTeacherId().getTeacherId() : null;
-        validateNoOverlap(dayIds, request.getClassroomId(), teacherId,
-                request.getStartTime(), request.getEndTime(), startDate, endDate, null);
+        TeacherEntity teacher = resolveTeacher(request.getTeacherId(), group);
+        UUID teacherId = teacher != null ? teacher.getTeacherId() : null;
+        String status = resolveStatus(request.getStatus(), classroom);
+
+        validateNoOverlap(dayIds, group.getGroupId(), classroom != null ? classroom.getClassroomId() : null,
+                teacherId, request.getStartTime(), request.getEndTime(), startDate, endDate, null);
 
         try {
             ClassHourEntity entity = ClassHourEntity.builder()
                     .groupId(group)
                     .classroomId(classroom)
+                    .teacherId(teacher)
+                    .status(status)
                     .days(days)
                     .startTime(request.getStartTime())
                     .endTime(request.getEndTime())
@@ -232,7 +225,8 @@ public class ClassHourServiceImpl implements ClassHourService {
                     return new ClassHourNotFoundException(id);
                 });
 
-        // Update group if provided
+        boolean wasActive = classHourToUpdate.isActive();
+
         if (request.getGroupId() != null) {
             GroupEntity group = groupRepository.findById(request.getGroupId())
                     .orElseThrow(() -> new IllegalArgumentException("Group not found with ID: " + request.getGroupId()));
@@ -242,17 +236,28 @@ public class ClassHourServiceImpl implements ClassHourService {
             classHourToUpdate.setGroupId(group);
         }
 
-        // Update classroom if provided
-        if (request.getClassroomId() != null) {
-            ClassroomEntity classroom = classroomRepository.findById(request.getClassroomId())
-                    .orElseThrow(() -> new IllegalArgumentException("Classroom not found with ID: " + request.getClassroomId()));
-            if (!classroom.isActive()) {
-                throw new IllegalArgumentException("Cannot assign a disabled classroom to a class hour.");
+        if (Boolean.TRUE.equals(request.getClearClassroom())) {
+            classHourToUpdate.setClassroomId(null);
+            if (request.getStatus() == null) {
+                classHourToUpdate.setStatus(ClassHourEntity.STATUS_NO_CLASSROOM_REQUIRED);
             }
+        } else if (request.getClassroomId() != null) {
+            ClassroomEntity classroom = resolveClassroom(request.getClassroomId());
             classHourToUpdate.setClassroomId(classroom);
         }
 
-        // Update days if provided
+        if (request.getTeacherId() != null) {
+            TeacherEntity teacher = teacherRepository.findById(request.getTeacherId())
+                    .orElseThrow(() -> new IllegalArgumentException("Teacher not found with ID: " + request.getTeacherId()));
+            classHourToUpdate.setTeacherId(teacher);
+        }
+
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            classHourToUpdate.setStatus(request.getStatus().trim().toUpperCase());
+        } else if (request.getClassroomId() != null || Boolean.TRUE.equals(request.getClearClassroom())) {
+            classHourToUpdate.setStatus(resolveStatus(null, classHourToUpdate.getClassroomId()));
+        }
+
         if (request.getDayIds() != null) {
             if (request.getDayIds().isEmpty()) {
                 throw new IllegalArgumentException("At least one day of the week is required.");
@@ -261,39 +266,36 @@ public class ClassHourServiceImpl implements ClassHourService {
             classHourToUpdate.setDays(days);
         }
 
-        // Update scalar fields (time, dates) via mapper
         ClassHourMapper.updateEntityFromRequest(classHourToUpdate, request);
 
-        // Validate time range
         LocalTime startTime = classHourToUpdate.getStartTime();
         LocalTime endTime = classHourToUpdate.getEndTime();
         validateTimeRange(startTime, endTime);
-
-        // Validate date range
         validateDateRange(classHourToUpdate.getStartDate(), classHourToUpdate.getEndDate());
+        validateGroupFitsClassroom(classHourToUpdate.getGroupId(), classHourToUpdate.getClassroomId());
 
-        if (request.getGroupId() != null || request.getClassroomId() != null) {
-            validateGroupFitsClassroom(classHourToUpdate.getGroupId(), classHourToUpdate.getClassroomId());
-        }
-
-        // Validate no overlap if schedule-relevant fields changed
-        boolean scheduleChanged = request.getDayIds() != null
+        boolean reactivating = Boolean.TRUE.equals(request.getIsActive()) && !wasActive;
+        boolean scheduleChanged = reactivating
+                || request.getDayIds() != null
                 || request.getClassroomId() != null
+                || Boolean.TRUE.equals(request.getClearClassroom())
                 || request.getGroupId() != null
+                || request.getTeacherId() != null
                 || request.getStartTime() != null
                 || request.getEndTime() != null
                 || request.getStartDate() != null
                 || request.getEndDate() != null;
 
-        if (scheduleChanged) {
+        if (scheduleChanged && classHourToUpdate.isActive()) {
             List<UUID> currentDayIds = classHourToUpdate.getDays().stream()
                     .map(DayWeekEntity::getDayId)
                     .collect(Collectors.toList());
-            UUID classroomId = classHourToUpdate.getClassroomId() != null ? classHourToUpdate.getClassroomId().getClassroomId() : null;
-            UUID teacherId = classHourToUpdate.getGroupId() != null && classHourToUpdate.getGroupId().getTeacherId() != null
-                    ? classHourToUpdate.getGroupId().getTeacherId().getTeacherId()
-                    : null;
-            validateNoOverlap(currentDayIds, classroomId, teacherId, startTime, endTime,
+            UUID classroomId = classHourToUpdate.getClassroomId() != null
+                    ? classHourToUpdate.getClassroomId().getClassroomId() : null;
+            UUID teacherId = resolveTeacherId(classHourToUpdate);
+            UUID groupId = classHourToUpdate.getGroupId() != null
+                    ? classHourToUpdate.getGroupId().getGroupId() : null;
+            validateNoOverlap(currentDayIds, groupId, classroomId, teacherId, startTime, endTime,
                     classHourToUpdate.getStartDate(), classHourToUpdate.getEndDate(), id);
         }
 
@@ -332,21 +334,56 @@ public class ClassHourServiceImpl implements ClassHourService {
         log.info("Class hour soft-deleted successfully with ID: {}", id);
     }
 
-    // ─── Private validation helpers ──────────────────────────────────
-
     /**
-     * The classroom that matters is the one stored on the class hour.
-     * Group capacity cannot exceed that classroom's max capacity.
+     * Soft capacity check: filler seats (100/500) must not block scheduling.
      */
     private void validateGroupFitsClassroom(GroupEntity group, ClassroomEntity classroom) {
         if (group == null || classroom == null || group.getCapacity() == null || classroom.getMaxCapacity() == null) {
             return;
         }
         if (group.getCapacity() > classroom.getMaxCapacity()) {
-            throw new CapacityConstraintException(
-                    "Group capacity (" + group.getCapacity() + ") cannot exceed classroom max capacity ("
-                            + classroom.getMaxCapacity() + ").");
+            log.warn("Group capacity ({}) exceeds classroom max capacity ({}). Allowed for filler seats.",
+                    group.getCapacity(), classroom.getMaxCapacity());
         }
+    }
+
+    private ClassroomEntity resolveClassroom(UUID classroomId) {
+        if (classroomId == null) {
+            return null;
+        }
+        ClassroomEntity classroom = classroomRepository.findById(classroomId)
+                .orElseThrow(() -> new IllegalArgumentException("Classroom not found with ID: " + classroomId));
+        if (!classroom.isActive()) {
+            throw new IllegalArgumentException("Cannot create a class hour for a disabled classroom.");
+        }
+        return classroom;
+    }
+
+    private TeacherEntity resolveTeacher(UUID teacherId, GroupEntity group) {
+        if (teacherId != null) {
+            return teacherRepository.findById(teacherId)
+                    .orElseThrow(() -> new IllegalArgumentException("Teacher not found with ID: " + teacherId));
+        }
+        return group != null ? group.getTeacherId() : null;
+    }
+
+    private UUID resolveTeacherId(ClassHourEntity classHour) {
+        if (classHour.getTeacherId() != null) {
+            return classHour.getTeacherId().getTeacherId();
+        }
+        if (classHour.getGroupId() != null && classHour.getGroupId().getTeacherId() != null) {
+            return classHour.getGroupId().getTeacherId().getTeacherId();
+        }
+        return null;
+    }
+
+    private String resolveStatus(String requestedStatus, ClassroomEntity classroom) {
+        if (requestedStatus != null && !requestedStatus.isBlank()) {
+            return requestedStatus.trim().toUpperCase();
+        }
+        return classroom == null
+                ? ClassHourEntity.STATUS_NO_CLASSROOM_REQUIRED
+                : ClassHourEntity.STATUS_ASSIGNED;
     }
 
     private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
@@ -381,24 +418,30 @@ public class ClassHourServiceImpl implements ClassHourService {
         return days;
     }
 
-    private void validateNoOverlap(List<UUID> dayIds, UUID classroomId, UUID teacherId,
+    private void validateNoOverlap(List<UUID> dayIds, UUID groupId, UUID classroomId, UUID teacherId,
                                    LocalTime startTime, LocalTime endTime,
                                    LocalDate startDate, LocalDate endDate,
                                    UUID excludeId) {
-        List<ClassHourEntity> overlappingClassroom;
+        if (groupId != null) {
+            List<ClassHourEntity> overlappingGroup = excludeId == null
+                    ? classHourRepository.findOverlappingHoursByGroupForCreate(
+                            dayIds, groupId, startTime, endTime, startDate, endDate)
+                    : classHourRepository.findOverlappingHoursByGroup(
+                            dayIds, groupId, startTime, endTime, startDate, endDate, excludeId);
+            if (!overlappingGroup.isEmpty()) {
+                throw new ScheduleConflictException(
+                        "The group already has a class hour on the specified days and time range.");
+            }
+        }
 
         if (classroomId != null) {
-            if (excludeId != null) {
-                overlappingClassroom = classHourRepository.findOverlappingHours(
-                        dayIds, classroomId, startTime, endTime, startDate, endDate, excludeId);
-            } else {
-                overlappingClassroom = classHourRepository.findOverlappingHoursForCreate(
-                        dayIds, classroomId, startTime, endTime, startDate, endDate);
-            }
+            List<ClassHourEntity> overlappingClassroom = excludeId != null
+                    ? classHourRepository.findOverlappingHours(
+                            dayIds, classroomId, startTime, endTime, startDate, endDate, excludeId)
+                    : classHourRepository.findOverlappingHoursForCreate(
+                            dayIds, classroomId, startTime, endTime, startDate, endDate);
 
             if (!overlappingClassroom.isEmpty()) {
-                log.warn("Schedule overlap detected for classroom {} on days {} between {} and {} ({} to {})",
-                        classroomId, dayIds, startTime, endTime, startDate, endDate);
                 throw new ScheduleConflictException(
                         "The classroom is already occupied on the specified days and time range.");
             }
@@ -411,8 +454,6 @@ public class ClassHourServiceImpl implements ClassHourService {
                     : classHourRepository.findOverlappingHoursByTeacher(
                             dayIds, teacherId, startTime, endTime, startDate, endDate, excludeId);
             if (!overlappingTeacher.isEmpty()) {
-                log.warn("Schedule overlap detected for teacher {} on days {} between {} and {} ({} to {})",
-                        teacherId, dayIds, startTime, endTime, startDate, endDate);
                 throw new ScheduleConflictException(
                         "The teacher already has a class hour on the specified days and time range.");
             }

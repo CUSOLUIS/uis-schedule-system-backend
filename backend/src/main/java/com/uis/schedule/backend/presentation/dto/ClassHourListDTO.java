@@ -24,6 +24,8 @@ public class ClassHourListDTO {
     private LocalTime endTime;
     private UUID groupId;
     private UUID classroomId;
+    private UUID teacherId;
+    private String status;
     private List<String> dayNames;
     private LocalDate startDate;
     private LocalDate endDate;

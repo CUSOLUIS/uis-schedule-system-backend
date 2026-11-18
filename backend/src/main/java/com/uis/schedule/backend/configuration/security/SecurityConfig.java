@@ -64,7 +64,11 @@ public class SecurityConfig {
     @Bean
     protected SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         String[] publicEndpoints = {
-                "/auth/**",
+                "/auth/login",
+                "/auth/refresh",
+                "/auth/password/forgot",
+                "/auth/password/reset/**",
+                "/auth/logout",
                 "/swagger-ui/**",
                 "/v3/api-docs/**",
                 "/swagger-resources/**",
@@ -86,6 +90,7 @@ public class SecurityConfig {
                 }))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/signup").denyAll()
                         .requestMatchers(publicEndpoints)
                         .permitAll()
                         .anyRequest()

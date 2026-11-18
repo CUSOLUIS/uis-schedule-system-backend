@@ -148,6 +148,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUnsupportedOperationException(UnsupportedOperationException ex) {
+        return build(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
     /**
      * Unexpected illegal states (e.g. mail transport) stay as 500.
      * Role protection and in-use cases are handled by typed exceptions.

@@ -35,7 +35,6 @@ public class InvitationServiceImpl implements InvitationService {
     private final TokenGenerator tokenGenerator;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
-    private final TeacherProfileService teacherProfileService;
 
     @Value("${app.invitation.expiration-hours}")
     private int expirationHours;
@@ -165,7 +164,6 @@ public class InvitationServiceImpl implements InvitationService {
 
         newUser.getRoles().add(role);
         userRepository.save(newUser);
-        teacherProfileService.ensureFor(newUser);
 
         invitation.setStatus("APPROVED");
         invitationRepository.save(invitation);

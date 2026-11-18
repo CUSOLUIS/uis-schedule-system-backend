@@ -176,6 +176,7 @@ public class UserServiceImpl implements UserService {
       String email = request.getEmail().toLowerCase();
       String username = (request.getFirstName().substring(0, 1) + request.getLastName() + randomInt)
           .toLowerCase();
+      assertUsernameEmailUnique(email, username, null);
 
       UserEntity entity = UserEntity.builder()
           .firstName(request.getFirstName())
@@ -226,10 +227,15 @@ public class UserServiceImpl implements UserService {
     }
 
     // Se valida antes de tocar la entidad para no dejar cambios parciales.
-    java.util.Set<RoleEntity> resolvedRoles = request.getRoles() != null
-        ? resolveRoles(request.getRoles())
-        : null;
+    // roles: null = no cambiar; roles: [] = error claro (no inventar rol USER).
+    java.util.Set<RoleEntity> resolvedRoles = null;
+    if (request.getRoles() != null) {
+      resolvedRoles = resolveRoles(request.getRoles());
+    }
     assertAdministratorCanBeUpdated(userToUpdate, request, resolvedRoles);
+    if (request.getEmail() != null) {
+      assertUsernameEmailUnique(request.getEmail(), userToUpdate.getUsername(), id);
+    }
     boolean wasEnabled = userToUpdate.isEnable();
 
     try {
@@ -327,52 +333,9 @@ public class UserServiceImpl implements UserService {
 
   @Override
   public AuthResponse signUp(AuthSignupRequest authSignupRequest) {
-    String email = authSignupRequest.email().toLowerCase();
-    log.info("Registro interno de un usuario {}.", email);
-
-    String username = (authSignupRequest.firstName().substring(0, 1) + authSignupRequest.lastName())
-        .toLowerCase();
-
-    UserEntity existingUser = userRepository
-        .findUserEntityByEmailOrUsername(email, username)
-        .orElse(null);
-
-    if (existingUser != null) {
-      log.warn("Email already registered or username taken: {}", authSignupRequest.email());
-      throw new UserAlreadyExistsException("El correo o el nombre de usuario ya están en uso");
-    }
-
-    UserEntity newUser = new UserEntity();
-    newUser.setFirstName(authSignupRequest.firstName());
-    newUser.setLastName(authSignupRequest.lastName());
-    newUser.setUsername(username);
-    newUser.setEmail(email);
-    newUser.setPassword(passwordEncoder.encode(authSignupRequest.password()));
-    newUser.setEnable(true);
-    newUser.setAccountNoExpired(true);
-    newUser.setAccountNoLocked(true);
-    newUser.setCredentialNoExpired(true);
-
-    java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
-    roleRepository.findByName("USER").ifPresent(roles::add);
-    newUser.setRoles(roles);
-
-    userRepository.save(newUser);
-    log.info("User registered successfully: {}", authSignupRequest.email());
-
-    java.util.Set<String> rolesSet = newUser.getRoles().stream()
-        .map(RoleEntity::getName)
-        .collect(Collectors.toSet());
-
-    String token = jwtUtil.generateToken(
-        newUser.getUserId(),
-        newUser.getUsername(),
-        newUser.getEmail(),
-        rolesSet,
-        newUser.isEnable());
-    String refreshToken = issueRefreshToken(newUser);
-
-    return new AuthResponse(token, refreshToken, "User registered successfully");
+    // Registro público cerrado: altas solo por invitación o administración.
+    throw new UnsupportedOperationException(
+        "Public signup is disabled. Use an invitation or ask an administrator to create the account.");
   }
 
   @Override
@@ -616,17 +579,15 @@ public class UserServiceImpl implements UserService {
 
   /**
    * Traduce nombres de rol a roles persistidos. Un nombre inexistente se rechaza
-   * (400) en lugar de ignorarse; sin roles se asigna USER.
+   * (400). Roles vacíos o ausentes también se rechazan (no existe rol "USER").
    */
   private java.util.Set<RoleEntity> resolveRoles(java.util.Set<String> roleNames) {
-    java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
     if (roleNames == null || roleNames.isEmpty()) {
-      RoleEntity defaultRole = roleRepository.findByName("USER")
-          .orElseThrow(() -> new IllegalArgumentException("Default role USER is not configured"));
-      roles.add(defaultRole);
-      return roles;
+      throw new IllegalArgumentException(
+          "At least one role is required. Valid roles: ADMINISTRATOR, OPERATOR, TEACHER, STUDENT.");
     }
 
+    java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
     for (String roleName : roleNames) {
       if (roleName == null || roleName.isBlank()) {
         throw new IllegalArgumentException("Role name cannot be blank");
@@ -639,8 +600,8 @@ public class UserServiceImpl implements UserService {
   }
 
   /**
-   * Un ADMINISTRATOR no puede deshabilitarse ni perder su rol: como tampoco se
-   * puede borrar, el sistema conserva siempre al menos un administrador activo.
+   * Un ADMINISTRATOR no puede deshabilitarse, perder su rol ni ver modificado su
+   * correo por otro administrador (eso habilitaría un reset de contraseña).
    */
   private void assertAdministratorCanBeUpdated(UserEntity user, UpdateUserRequest request,
       java.util.Set<RoleEntity> resolvedRoles) {
@@ -654,6 +615,13 @@ public class UserServiceImpl implements UserService {
           "Security protection: Users with ADMINISTRATOR role cannot be disabled.");
     }
 
+    if (request.getEmail() != null
+        && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+      log.warn("Attempt to change ADMINISTRATOR email blocked for ID: {}", user.getUserId());
+      throw new ProtectedRoleException(
+          "Security protection: Administrator email cannot be changed by another administrator.");
+    }
+
     boolean stripsAdministrator = resolvedRoles != null && resolvedRoles.stream()
         .noneMatch(role -> ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName()));
     if (stripsAdministrator) {
@@ -661,6 +629,30 @@ public class UserServiceImpl implements UserService {
       throw new ProtectedRoleException(
           "Security protection: Users with ADMINISTRATOR role cannot be stripped of that role.");
     }
+  }
+
+  /**
+   * Evita que username y email se crucen entre cuentas (login usa ambos campos).
+   */
+  private void assertUsernameEmailUnique(String email, String username, UUID excludeUserId) {
+    String normalizedEmail = email == null ? null : email.toLowerCase().trim();
+    String normalizedUsername = username == null ? null : username.toLowerCase().trim();
+
+    checkIdentifierAvailable(normalizedEmail, excludeUserId);
+    if (normalizedUsername != null && !normalizedUsername.equals(normalizedEmail)) {
+      checkIdentifierAvailable(normalizedUsername, excludeUserId);
+    }
+  }
+
+  private void checkIdentifierAvailable(String identifier, UUID excludeUserId) {
+    if (identifier == null || identifier.isBlank()) {
+      return;
+    }
+    userRepository.findUserEntityByEmailOrUsername(identifier, identifier).ifPresent(existing -> {
+      if (excludeUserId == null || !existing.getUserId().equals(excludeUserId)) {
+        throw new UserAlreadyExistsException("El correo o el nombre de usuario ya están en uso");
+      }
+    });
   }
 
   private boolean hasRole(UserEntity user, String roleName) {

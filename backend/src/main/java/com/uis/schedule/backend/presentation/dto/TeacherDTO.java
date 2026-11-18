@@ -6,10 +6,13 @@ import java.util.UUID;
 
 @Getter
 @Setter
+@NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class TeacherDTO {
     private UUID teacherId;
-	private String availability;
-	private String department;
-	private UserListDTO user;
+    private String fullName;
+    private String linkType;
+    private String availability;
+    private String department;
 }
