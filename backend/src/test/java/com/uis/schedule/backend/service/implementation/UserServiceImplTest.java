@@ -51,6 +51,8 @@ class UserServiceImplTest {
             "Security protection: Users with ADMINISTRATOR role cannot be disabled.";
     private static final String STRIP_ADMIN_MESSAGE =
             "Security protection: Users with ADMINISTRATOR role cannot be stripped of that role.";
+    private static final String ROLES_REQUIRED_MESSAGE =
+            "At least one role is required. Valid roles: ADMINISTRATOR, OPERATOR, TEACHER, STUDENT.";
 
     @Mock
     private UserRepository userRepository;
@@ -131,9 +133,8 @@ class UserServiceImplTest {
         UUID userId = UUID.randomUUID();
         UserEntity admin = enabledUser(userId, role("ADMINISTRATOR"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(admin));
-        when(roleRepository.findByName("USER")).thenReturn(Optional.of(role("USER")));
 
-        UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of("USER")).build();
+        UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of("TEACHER")).build();
 
         ProtectedRoleException ex = assertThrows(ProtectedRoleException.class,
                 () -> userService.updateUser(userId, request));
@@ -148,7 +149,6 @@ class UserServiceImplTest {
         UUID userId = UUID.randomUUID();
         UserEntity admin = enabledUser(userId, role("ADMINISTRATOR"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(admin));
-        when(roleRepository.findByName("USER")).thenReturn(Optional.of(role("USER")));
 
         UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of()).build();
 
@@ -158,6 +158,24 @@ class UserServiceImplTest {
         assertEquals(STRIP_ADMIN_MESSAGE, ex.getMessage());
         assertEquals(Set.of("ADMINISTRATOR"), roleNames(admin));
         verify(userRepository, never()).save(any());
+        // El 403 no depende de que exista algún rol por defecto en la base.
+        verify(roleRepository, never()).findByName(anyString());
+    }
+
+    @Test
+    void updateUser_nonAdministratorWithEmptyRoles_badRequest() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = enabledUser(userId, role("TEACHER"));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of()).build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> userService.updateUser(userId, request));
+
+        assertEquals(ROLES_REQUIRED_MESSAGE, ex.getMessage());
+        assertEquals(Set.of("TEACHER"), roleNames(user));
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -166,18 +184,18 @@ class UserServiceImplTest {
         UserEntity admin = enabledUser(userId, role("ADMINISTRATOR"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(admin));
         when(roleRepository.findByName("ADMINISTRATOR")).thenReturn(Optional.of(role("ADMINISTRATOR")));
-        when(roleRepository.findByName("USER")).thenReturn(Optional.of(role("USER")));
+        when(roleRepository.findByName("TEACHER")).thenReturn(Optional.of(role("TEACHER")));
         when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         UpdateUserRequest request = UpdateUserRequest.builder()
                 .firstName("Nuevo")
-                .roles(Set.of("ADMINISTRATOR", "USER"))
+                .roles(Set.of("ADMINISTRATOR", "TEACHER"))
                 .build();
 
         UserResponse response = userService.updateUser(userId, request);
 
         assertEquals("Nuevo", response.getFirstName());
-        assertEquals(Set.of("ADMINISTRATOR", "USER"), response.getRoles());
+        assertEquals(Set.of("ADMINISTRATOR", "TEACHER"), response.getRoles());
         verify(userRepository).save(admin);
     }
 
@@ -189,9 +207,8 @@ class UserServiceImplTest {
         UserEntity second = enabledUser(secondId, role("ADMINISTRATOR"));
         when(userRepository.findById(firstId)).thenReturn(Optional.of(first));
         when(userRepository.findById(secondId)).thenReturn(Optional.of(second));
-        when(roleRepository.findByName("USER")).thenReturn(Optional.of(role("USER")));
 
-        UpdateUserRequest strip = UpdateUserRequest.builder().roles(Set.of("USER")).build();
+        UpdateUserRequest strip = UpdateUserRequest.builder().roles(Set.of("TEACHER")).build();
         UpdateUserRequest disable = UpdateUserRequest.builder().active(false).build();
 
         assertThrows(ProtectedRoleException.class, () -> userService.updateUser(firstId, strip));
@@ -209,14 +226,14 @@ class UserServiceImplTest {
     @Test
     void updateUser_unknownRole_badRequestWithoutPartialChanges() {
         UUID userId = UUID.randomUUID();
-        UserEntity user = enabledUser(userId, role("USER"));
+        UserEntity user = enabledUser(userId, role("TEACHER"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(roleRepository.findByName("USER")).thenReturn(Optional.of(role("USER")));
+        when(roleRepository.findByName("TEACHER")).thenReturn(Optional.of(role("TEACHER")));
         when(roleRepository.findByName("FANTASMA")).thenReturn(Optional.empty());
 
         UpdateUserRequest request = UpdateUserRequest.builder()
                 .firstName("Otro")
-                .roles(new java.util.LinkedHashSet<>(java.util.List.of("USER", "FANTASMA")))
+                .roles(new java.util.LinkedHashSet<>(java.util.List.of("TEACHER", "FANTASMA")))
                 .build();
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
@@ -224,7 +241,7 @@ class UserServiceImplTest {
 
         assertEquals("Unknown role: FANTASMA", ex.getMessage());
         assertEquals("Ana", user.getFirstName());
-        assertEquals(Set.of("USER"), roleNames(user));
+        assertEquals(Set.of("TEACHER"), roleNames(user));
         verify(userRepository, never()).save(any());
     }
 
@@ -247,12 +264,38 @@ class UserServiceImplTest {
         verify(userRepository, never()).save(any());
     }
 
+    @Test
+    void createUser_withoutRoles_badRequest() {
+        CreateUserRequest withoutRoles = CreateUserRequest.builder()
+                .firstName("Ana")
+                .lastName("Perez")
+                .email("ana@uis.edu.co")
+                .password("Secreta123")
+                .build();
+        CreateUserRequest emptyRoles = CreateUserRequest.builder()
+                .firstName("Ana")
+                .lastName("Perez")
+                .email("ana@uis.edu.co")
+                .password("Secreta123")
+                .roles(Set.of())
+                .build();
+
+        IllegalArgumentException nullEx = assertThrows(IllegalArgumentException.class,
+                () -> userService.createUser(withoutRoles));
+        IllegalArgumentException emptyEx = assertThrows(IllegalArgumentException.class,
+                () -> userService.createUser(emptyRoles));
+
+        assertEquals(ROLES_REQUIRED_MESSAGE, nullEx.getMessage());
+        assertEquals(ROLES_REQUIRED_MESSAGE, emptyEx.getMessage());
+        verify(userRepository, never()).save(any());
+    }
+
     // ─── Revocación de sesiones ──────────────────────
 
     @Test
     void deleteUser_regularUser_disablesAndRevokesTokens() {
         UUID userId = UUID.randomUUID();
-        UserEntity user = enabledUser(userId, role("USER"));
+        UserEntity user = enabledUser(userId, role("TEACHER"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         userService.deleteUser(userId);
@@ -265,7 +308,7 @@ class UserServiceImplTest {
     @Test
     void updateUser_disablingRegularUser_revokesTokens() {
         UUID userId = UUID.randomUUID();
-        UserEntity user = enabledUser(userId, role("USER"));
+        UserEntity user = enabledUser(userId, role("TEACHER"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -279,9 +322,9 @@ class UserServiceImplTest {
     void updateUser_enablingUser_doesNotRevoke() {
         UUID enablingId = UUID.randomUUID();
         UUID alreadyDisabledId = UUID.randomUUID();
-        UserEntity disabled = enabledUser(enablingId, role("USER"));
+        UserEntity disabled = enabledUser(enablingId, role("TEACHER"));
         disabled.setEnable(false);
-        UserEntity alreadyDisabled = enabledUser(alreadyDisabledId, role("USER"));
+        UserEntity alreadyDisabled = enabledUser(alreadyDisabledId, role("TEACHER"));
         alreadyDisabled.setEnable(false);
         when(userRepository.findById(enablingId)).thenReturn(Optional.of(disabled));
         when(userRepository.findById(alreadyDisabledId)).thenReturn(Optional.of(alreadyDisabled));
@@ -297,7 +340,7 @@ class UserServiceImplTest {
     @Test
     void refresh_disabledUser_throwsInvalidToken() {
         UUID userId = UUID.randomUUID();
-        UserEntity user = enabledUser(userId, role("USER"));
+        UserEntity user = enabledUser(userId, role("TEACHER"));
         user.setEnable(false);
         String token = "refresh-token";
         String jti = "jti-1";
@@ -325,7 +368,7 @@ class UserServiceImplTest {
     @Test
     void changePassword_revokesRefreshTokens() {
         UUID userId = UUID.randomUUID();
-        UserEntity user = enabledUser(userId, role("USER"));
+        UserEntity user = enabledUser(userId, role("TEACHER"));
         when(userRepository.findUserEntityByEmailOrUsername(user.getEmail(), user.getEmail()))
                 .thenReturn(Optional.of(user));
         when(passwordEncoder.matches("Actual12345", "hash")).thenReturn(true);
@@ -340,7 +383,7 @@ class UserServiceImplTest {
     @Test
     void resetPassword_revokesRefreshTokens() {
         UUID userId = UUID.randomUUID();
-        UserEntity user = enabledUser(userId, role("USER"));
+        UserEntity user = enabledUser(userId, role("TEACHER"));
         PasswordResetTokenEntity resetToken = PasswordResetTokenEntity.builder()
                 .user(user)
                 .token("reset-token")

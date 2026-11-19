@@ -226,10 +226,10 @@ public class UserServiceImpl implements UserService {
     }
 
     // Se valida antes de tocar la entidad para no dejar cambios parciales.
+    assertAdministratorCanBeUpdated(userToUpdate, request);
     java.util.Set<RoleEntity> resolvedRoles = request.getRoles() != null
         ? resolveRoles(request.getRoles())
         : null;
-    assertAdministratorCanBeUpdated(userToUpdate, request, resolvedRoles);
     boolean wasEnabled = userToUpdate.isEnable();
 
     try {
@@ -616,17 +616,16 @@ public class UserServiceImpl implements UserService {
 
   /**
    * Traduce nombres de rol a roles persistidos. Un nombre inexistente se rechaza
-   * (400) en lugar de ignorarse; sin roles se asigna USER.
+   * (400) en lugar de ignorarse. No hay rol por defecto: el seed no tiene USER,
+   * así que un conjunto vacío también es 400.
    */
   private java.util.Set<RoleEntity> resolveRoles(java.util.Set<String> roleNames) {
-    java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
     if (roleNames == null || roleNames.isEmpty()) {
-      RoleEntity defaultRole = roleRepository.findByName("USER")
-          .orElseThrow(() -> new IllegalArgumentException("Default role USER is not configured"));
-      roles.add(defaultRole);
-      return roles;
+      throw new IllegalArgumentException(
+          "At least one role is required. Valid roles: ADMINISTRATOR, OPERATOR, TEACHER, STUDENT.");
     }
 
+    java.util.Set<RoleEntity> roles = new java.util.HashSet<>();
     for (String roleName : roleNames) {
       if (roleName == null || roleName.isBlank()) {
         throw new IllegalArgumentException("Role name cannot be blank");
@@ -641,9 +640,10 @@ public class UserServiceImpl implements UserService {
   /**
    * Un ADMINISTRATOR no puede deshabilitarse ni perder su rol: como tampoco se
    * puede borrar, el sistema conserva siempre al menos un administrador activo.
+   * Trabaja con los nombres pedidos, sin resolverlos, para que el 403 no dependa
+   * de qué roles existan en la base.
    */
-  private void assertAdministratorCanBeUpdated(UserEntity user, UpdateUserRequest request,
-      java.util.Set<RoleEntity> resolvedRoles) {
+  private void assertAdministratorCanBeUpdated(UserEntity user, UpdateUserRequest request) {
     if (!hasRole(user, ADMINISTRATOR_ROLE)) {
       return;
     }
@@ -654,8 +654,8 @@ public class UserServiceImpl implements UserService {
           "Security protection: Users with ADMINISTRATOR role cannot be disabled.");
     }
 
-    boolean stripsAdministrator = resolvedRoles != null && resolvedRoles.stream()
-        .noneMatch(role -> ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName()));
+    boolean stripsAdministrator = request.getRoles() != null && request.getRoles().stream()
+        .noneMatch(ADMINISTRATOR_ROLE::equalsIgnoreCase);
     if (stripsAdministrator) {
       log.warn("Attempt to strip ADMINISTRATOR role blocked for ID: {}", user.getUserId());
       throw new ProtectedRoleException(
