@@ -110,6 +110,12 @@ public class GlobalExceptionHandler {
 
     // ─── 401 — Authentication failures ────────────
 
+    /** Refresh o logout con un token inválido, revocado o de una cuenta deshabilitada. */
+    @ExceptionHandler(InvalidSessionTokenException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInvalidSessionTokenException(InvalidSessionTokenException ex) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiResponse<Object>> handleAuthenticationException(AuthenticationException ex) {
         return build(HttpStatus.UNAUTHORIZED, "Bad credentials");
