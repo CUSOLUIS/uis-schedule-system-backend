@@ -32,4 +32,6 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID>, JpaSpec
   boolean existsByEmail(String email);
 
   boolean existsByRoles_Guid(UUID roleGuid);
+
+  long countByRoles_NameAndIsEnableTrueAndUserIdNot(String roleName, UUID userId);
 }

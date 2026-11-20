@@ -75,6 +75,33 @@ public class ClassroomServiceImpl implements ClassroomService {
         return convertToPaginatedResponse(classroomsPage);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ClassroomListDTO> findAvailable(
+            UUID dayId,
+            java.time.LocalTime startTime,
+            java.time.LocalTime endTime,
+            java.time.LocalDate startDate,
+            java.time.LocalDate endDate,
+            Integer minCapacity,
+            UUID excludeClassHourId) {
+        if (dayId == null || startTime == null || endTime == null || startDate == null || endDate == null) {
+            throw new IllegalArgumentException("dayId, startTime, endTime, startDate and endDate are required.");
+        }
+        if (!startTime.isBefore(endTime)) {
+            throw new IllegalArgumentException("Start time must be before end time.");
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("Start date must be before or equal to end date.");
+        }
+        int capacity = minCapacity == null || minCapacity < 1 ? 1 : minCapacity;
+        return classroomRepository.findAvailableForSlot(
+                        dayId, startTime, endTime, startDate, endDate, capacity, excludeClassHourId)
+                .stream()
+                .map(ClassroomMapper::entityToListDTO)
+                .collect(Collectors.toList());
+    }
+
     private PaginatedResponse<ClassroomListDTO> convertToPaginatedResponse(Page<ClassroomEntity> classroomsPage) {
         List<ClassroomListDTO> content = classroomsPage.getContent().stream()
                 .map(ClassroomMapper::entityToListDTO)

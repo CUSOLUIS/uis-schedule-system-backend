@@ -18,6 +18,11 @@ import java.util.UUID;
 @Table(name = "class_hour")
 public class ClassHourEntity {
 
+    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_ASSIGNED = "ASSIGNED";
+    public static final String STATUS_NO_CLASSROOM_REQUIRED = "NO_CLASSROOM_REQUIRED";
+    public static final String STATUS_SENT_TO_ADMISSIONS = "SENT_TO_ADMISSIONS";
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "class_hour_id", columnDefinition = "uuid")
@@ -45,6 +50,14 @@ public class ClassHourEntity {
     @ManyToOne
     @JoinColumn(name = "classroom_id")
     private ClassroomEntity classroomId;
+
+    @ManyToOne
+    @JoinColumn(name = "teacher_id")
+    private TeacherEntity teacherId;
+
+    @Column(name = "status", nullable = false, length = 40)
+    @Builder.Default
+    private String status = STATUS_PENDING;
 
     @Column(name = "start_date", nullable = false)
     @Builder.Default

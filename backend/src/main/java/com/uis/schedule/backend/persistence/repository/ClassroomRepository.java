@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 public interface ClassroomRepository extends JpaRepository<ClassroomEntity, UUID> {
@@ -57,5 +60,40 @@ public interface ClassroomRepository extends JpaRepository<ClassroomEntity, UUID
             @Param("building") String building,
             @Param("capacity") Integer capacity,
             Pageable pageable
+    );
+
+    /**
+     * Active classrooms free for the given slot, ordered by building preference
+     * then smallest sufficient capacity.
+     */
+    @Query("""
+            SELECT c FROM ClassroomEntity c
+            LEFT JOIN c.buildingId b
+            WHERE c.isActive = true
+              AND (c.maxCapacity IS NULL OR c.maxCapacity >= :minCapacity)
+              AND c.classroomId NOT IN (
+                  SELECT ch.classroomId.classroomId FROM ClassHourEntity ch
+                  JOIN ch.days d
+                  WHERE d.dayId = :dayId
+                    AND ch.isActive = true
+                    AND (ch.groupId IS NULL OR ch.groupId.isActive = true)
+                    AND ch.classroomId IS NOT NULL
+                    AND ch.startTime < :endTime
+                    AND ch.endTime > :startTime
+                    AND ch.startDate <= :endDate
+                    AND ch.endDate >= :startDate
+                    AND (:excludeClassHourId IS NULL OR ch.classHourId <> :excludeClassHourId)
+              )
+            ORDER BY COALESCE(b.preferenceOrder, 9999) ASC,
+                     COALESCE(c.maxCapacity, 999999) ASC
+            """)
+    List<ClassroomEntity> findAvailableForSlot(
+            @Param("dayId") UUID dayId,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("minCapacity") Integer minCapacity,
+            @Param("excludeClassHourId") UUID excludeClassHourId
     );
 }

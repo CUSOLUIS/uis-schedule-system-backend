@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -18,10 +19,6 @@ public class ClassHourMapper {
         // Utility class should not be instantiated
     }
 
-    /**
-     * Extracts a sorted list of day names (lowercase) from the entity's days set.
-     * The names are sorted alphabetically for consistent ordering.
-     */
     private static List<String> extractDayNames(ClassHourEntity entity) {
         if (entity.getDays() == null) {
             return new ArrayList<>();
@@ -30,6 +27,10 @@ public class ClassHourMapper {
                 .map(day -> day.getName() != null ? day.getName().toLowerCase() : null)
                 .sorted()
                 .collect(Collectors.toList());
+    }
+
+    private static UUID teacherIdOf(ClassHourEntity entity) {
+        return entity.getTeacherId() != null ? entity.getTeacherId().getTeacherId() : null;
     }
 
     public static ClassHourListDTO entityToListDTO(ClassHourEntity entity) {
@@ -43,6 +44,8 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
+                .teacherId(teacherIdOf(entity))
+                .status(entity.getStatus())
                 .dayNames(extractDayNames(entity))
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
@@ -61,6 +64,8 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
+                .teacherId(teacherIdOf(entity))
+                .status(entity.getStatus())
                 .dayNames(extractDayNames(entity))
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())
@@ -79,6 +84,8 @@ public class ClassHourMapper {
                 .endTime(entity.getEndTime())
                 .groupId(entity.getGroupId() != null ? entity.getGroupId().getGroupId() : null)
                 .classroomId(entity.getClassroomId() != null ? entity.getClassroomId().getClassroomId() : null)
+                .teacherId(teacherIdOf(entity))
+                .status(entity.getStatus())
                 .dayNames(extractDayNames(entity))
                 .startDate(entity.getStartDate())
                 .endDate(entity.getEndDate())

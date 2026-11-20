@@ -24,6 +24,11 @@ public class ClassroomEntity {
     @Column(name = "max_capacity")
     private Integer maxCapacity;
 
+    @ManyToOne
+    @JoinColumn(name = "building_id")
+    private BuildingEntity buildingId;
+
+    /** Legacy free-text building name; prefer {@link #buildingId}. */
     @Column(length = 256)
     private String building;
 
