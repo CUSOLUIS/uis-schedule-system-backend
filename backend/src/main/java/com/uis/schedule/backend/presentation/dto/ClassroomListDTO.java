@@ -19,6 +19,9 @@ public class ClassroomListDTO {
     private UUID id;
     private String number;
     private Integer maxCapacity;
+    private UUID buildingId;
+    private String buildingCode;
+    private Integer buildingPreferenceOrder;
     private String building;
     private String campus;
     private String type;

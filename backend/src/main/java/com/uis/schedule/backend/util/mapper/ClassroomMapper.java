@@ -23,8 +23,13 @@ public class ClassroomMapper {
                 .id(entity.getClassroomId())
                 .number(entity.getNumber())
                 .maxCapacity(entity.getMaxCapacity())
-                .building(entity.getBuilding())
-                .campus(entity.getCampus())
+                .buildingId(entity.getBuildingId() != null ? entity.getBuildingId().getBuildingId() : null)
+                .buildingCode(entity.getBuildingId() != null ? entity.getBuildingId().getCode() : null)
+                .buildingPreferenceOrder(entity.getBuildingId() != null
+                        ? entity.getBuildingId().getPreferenceOrder() : null)
+                .building(entity.getBuildingId() != null ? entity.getBuildingId().getName() : entity.getBuilding())
+                .campus(entity.getBuildingId() != null && entity.getBuildingId().getCampus() != null
+                        ? entity.getBuildingId().getCampus() : entity.getCampus())
                 .type(entity.getType())
                 .isActive(entity.isActive())
                 .build();

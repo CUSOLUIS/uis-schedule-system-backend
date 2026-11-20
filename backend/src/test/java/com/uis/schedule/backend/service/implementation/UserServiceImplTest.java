@@ -131,9 +131,8 @@ class UserServiceImplTest {
         UUID userId = UUID.randomUUID();
         UserEntity admin = enabledUser(userId, role("ADMINISTRATOR"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(admin));
-        when(roleRepository.findByName("USER")).thenReturn(Optional.of(role("USER")));
 
-        UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of("USER")).build();
+        UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of("OPERATOR")).build();
 
         ProtectedRoleException ex = assertThrows(ProtectedRoleException.class,
                 () -> userService.updateUser(userId, request));
@@ -141,13 +140,31 @@ class UserServiceImplTest {
         assertEquals(STRIP_ADMIN_MESSAGE, ex.getMessage());
         assertEquals(Set.of("ADMINISTRATOR"), roleNames(admin));
         verify(userRepository, never()).save(any());
+        verify(roleRepository, never()).findByName(anyString());
     }
 
     @Test
-    void updateUser_administratorWithEmptyRoles_rejectsMissingRoles() {
+    void updateUser_administratorWithEmptyRoles_forbiddenWithoutRoleLookup() {
         UUID userId = UUID.randomUUID();
         UserEntity admin = enabledUser(userId, role("ADMINISTRATOR"));
         when(userRepository.findById(userId)).thenReturn(Optional.of(admin));
+
+        UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of()).build();
+
+        ProtectedRoleException ex = assertThrows(ProtectedRoleException.class,
+                () -> userService.updateUser(userId, request));
+
+        assertEquals(STRIP_ADMIN_MESSAGE, ex.getMessage());
+        assertEquals(Set.of("ADMINISTRATOR"), roleNames(admin));
+        verify(userRepository, never()).save(any());
+        verify(roleRepository, never()).findByName(anyString());
+    }
+
+    @Test
+    void updateUser_nonAdminWithEmptyRoles_badRequestWithoutRoleLookup() {
+        UUID userId = UUID.randomUUID();
+        UserEntity operator = enabledUser(userId, role("OPERATOR"));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(operator));
 
         UpdateUserRequest request = UpdateUserRequest.builder().roles(Set.of()).build();
 
@@ -155,8 +172,8 @@ class UserServiceImplTest {
                 () -> userService.updateUser(userId, request));
 
         assertTrue(ex.getMessage().contains("At least one role is required"));
-        assertEquals(Set.of("ADMINISTRATOR"), roleNames(admin));
         verify(userRepository, never()).save(any());
+        verify(roleRepository, never()).findByName(anyString());
     }
 
     @Test
@@ -204,9 +221,8 @@ class UserServiceImplTest {
         UserEntity second = enabledUser(secondId, role("ADMINISTRATOR"));
         when(userRepository.findById(firstId)).thenReturn(Optional.of(first));
         when(userRepository.findById(secondId)).thenReturn(Optional.of(second));
-        when(roleRepository.findByName("USER")).thenReturn(Optional.of(role("USER")));
 
-        UpdateUserRequest strip = UpdateUserRequest.builder().roles(Set.of("USER")).build();
+        UpdateUserRequest strip = UpdateUserRequest.builder().roles(Set.of("OPERATOR")).build();
         UpdateUserRequest disable = UpdateUserRequest.builder().active(false).build();
 
         assertThrows(ProtectedRoleException.class, () -> userService.updateUser(firstId, strip));

@@ -226,13 +226,14 @@ public class UserServiceImpl implements UserService {
       request.setEmail(request.getEmail().toLowerCase());
     }
 
-    // Se valida antes de tocar la entidad para no dejar cambios parciales.
-    // roles: null = no cambiar; roles: [] = error claro (no inventar rol USER).
+    // Admin protection runs before resolveRoles so roles:[] on an admin answers 403
+    // without looking up the nonexistent USER role. roles null = keep current roles.
+    assertAdministratorCanBeUpdated(userToUpdate, request, request.getRoles());
+
     java.util.Set<RoleEntity> resolvedRoles = null;
     if (request.getRoles() != null) {
       resolvedRoles = resolveRoles(request.getRoles());
     }
-    assertAdministratorCanBeUpdated(userToUpdate, request, resolvedRoles);
     if (request.getEmail() != null) {
       assertUsernameEmailUnique(request.getEmail(), userToUpdate.getUsername(), id);
     }
@@ -602,9 +603,11 @@ public class UserServiceImpl implements UserService {
   /**
    * Un ADMINISTRATOR no puede deshabilitarse, perder su rol ni ver modificado su
    * correo por otro administrador (eso habilitaría un reset de contraseña).
+   * Uses requested role names (not resolved entities) so roles:[] is blocked with 403
+   * before any RoleRepository lookup.
    */
   private void assertAdministratorCanBeUpdated(UserEntity user, UpdateUserRequest request,
-      java.util.Set<RoleEntity> resolvedRoles) {
+      java.util.Set<String> requestedRoleNames) {
     if (!hasRole(user, ADMINISTRATOR_ROLE)) {
       return;
     }
@@ -622,8 +625,8 @@ public class UserServiceImpl implements UserService {
           "Security protection: Administrator email cannot be changed by another administrator.");
     }
 
-    boolean stripsAdministrator = resolvedRoles != null && resolvedRoles.stream()
-        .noneMatch(role -> ADMINISTRATOR_ROLE.equalsIgnoreCase(role.getName()));
+    boolean stripsAdministrator = requestedRoleNames != null && requestedRoleNames.stream()
+        .noneMatch(name -> name != null && ADMINISTRATOR_ROLE.equalsIgnoreCase(name));
     if (stripsAdministrator) {
       log.warn("Attempt to strip ADMINISTRATOR role blocked for ID: {}", user.getUserId());
       throw new ProtectedRoleException(

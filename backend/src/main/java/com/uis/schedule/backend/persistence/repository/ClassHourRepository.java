@@ -189,4 +189,48 @@ public interface ClassHourRepository extends JpaRepository<ClassHourEntity, UUID
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
+
+    /**
+     * Weekly schedule for a catalog teacher: session teacher preferred, else group teacher.
+     * Projected to DTO to avoid N+1. Constructor field order must match TeacherScheduleEntryDTO.
+     */
+    @Query("SELECT new com.uis.schedule.backend.presentation.dto.TeacherScheduleEntryDTO(" +
+           "ch.classHourId, d.name, ch.startTime, ch.endTime, " +
+           "g.groupId, g.name, g.capacity, s.code, s.name, s.credits, c.number, c.building) " +
+           "FROM ClassHourEntity ch " +
+           "JOIN ch.days d " +
+           "JOIN ch.groupId g " +
+           "JOIN g.subjectId s " +
+           "LEFT JOIN ch.classroomId c " +
+           "WHERE ch.isActive = true " +
+           "AND g.isActive = true " +
+           "AND (" +
+           "  (ch.teacherId IS NOT NULL AND ch.teacherId.teacherId = :teacherId) " +
+           "  OR (ch.teacherId IS NULL AND g.teacherId.teacherId = :teacherId)" +
+           ") " +
+           "ORDER BY ch.startTime")
+    List<com.uis.schedule.backend.presentation.dto.TeacherScheduleEntryDTO> findScheduleEntriesByTeacherId(
+            @Param("teacherId") UUID teacherId);
+
+    /**
+     * Weekly occupancy of a classroom for the frontend grid (PR #43 reuse).
+     * Constructor field order must match ClassroomOccupancyEntryDTO.
+     */
+    @Query("SELECT new com.uis.schedule.backend.presentation.dto.ClassroomOccupancyEntryDTO(" +
+           "ch.classHourId, d.name, ch.startTime, ch.endTime, " +
+           "g.groupId, g.name, g.capacity, s.code, s.name, " +
+           "COALESCE(st.teacherId, gt.teacherId), " +
+           "COALESCE(st.fullName, gt.fullName)) " +
+           "FROM ClassHourEntity ch " +
+           "JOIN ch.days d " +
+           "JOIN ch.groupId g " +
+           "JOIN g.subjectId s " +
+           "LEFT JOIN ch.teacherId st " +
+           "LEFT JOIN g.teacherId gt " +
+           "WHERE ch.classroomId.classroomId = :classroomId " +
+           "AND ch.isActive = true " +
+           "AND g.isActive = true " +
+           "ORDER BY ch.startTime")
+    List<com.uis.schedule.backend.presentation.dto.ClassroomOccupancyEntryDTO> findOccupancyEntriesByClassroomId(
+            @Param("classroomId") UUID classroomId);
 }

@@ -28,9 +28,13 @@ import java.util.UUID;
 public class ClassroomController {
 
     private final ClassroomService classroomService;
+    private final com.uis.schedule.backend.service.interfaces.ClassroomOccupancyService classroomOccupancyService;
 
-    public ClassroomController(ClassroomService classroomService) {
+    public ClassroomController(
+            ClassroomService classroomService,
+            com.uis.schedule.backend.service.interfaces.ClassroomOccupancyService classroomOccupancyService) {
         this.classroomService = classroomService;
+        this.classroomOccupancyService = classroomOccupancyService;
     }
 
     @Operation(summary = "List active classrooms with pagination", description = "Retrieves a paginated list of active classrooms. Requires authentication.")
@@ -216,7 +220,8 @@ public class ClassroomController {
 
     @Operation(summary = "List free classrooms for a time slot",
             description = "Returns active classrooms available for the given day/time/date range, "
-                    + "ordered by building preference and smallest sufficient capacity (HC-05).")
+                    + "ordered by building preference and smallest sufficient capacity. "
+                    + "Payload includes buildingId/code/preferenceOrder for the assignment engine.")
     @GetMapping("/available")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<java.util.List<ClassroomListDTO>>> available(
@@ -230,6 +235,19 @@ public class ClassroomController {
         return ResponseEntity.ok(ApiResponse.success(
                 classroomService.findAvailable(dayId, startTime, endTime, startDate, endDate, minCapacity, excludeClassHourId),
                 "Available classrooms retrieved successfully"));
+    }
+
+    @Operation(summary = "Weekly occupancy of a classroom",
+            description = "Feeds the weekly classroom grid (frontend reuses PR #43 schedule grid). "
+                    + "Returns active sessions ordered by day and start time.")
+    @GetMapping("/{id}/occupancy")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ClassroomOccupancyDTO>> weeklyOccupancy(@PathVariable UUID id) {
+        ClassroomOccupancyDTO occupancy = classroomOccupancyService.getWeeklyOccupancy(id);
+        String message = occupancy.getEntries() == null || occupancy.getEntries().isEmpty()
+                ? "The classroom has no assigned classes"
+                : "Classroom occupancy retrieved successfully";
+        return ResponseEntity.ok(ApiResponse.success(occupancy, message));
     }
 
     @Operation(summary = "Get classroom by ID", description = "Retrieves detailed information of a single classroom. Requires authentication.")
